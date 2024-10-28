@@ -14,19 +14,6 @@ from transformers import TrainingArguments, Trainer
 
 from sklearn.model_selection import train_test_split
 
-SEED = 456
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-torch.cuda.manual_seed(SEED)
-torch.cuda.manual_seed_all(SEED)
-
-DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-BASE_DIR = os.getcwd()
-DATA_DIR = os.path.join(BASE_DIR, '../data')
-OUTPUT_DIR = os.path.join(BASE_DIR, '../output')
-
 
 class BERTDataset(Dataset):
     def __init__(self, data, tokenizer):
@@ -48,29 +35,38 @@ class BERTDataset(Dataset):
 
     def __len__(self):
         return len(self.labels)
+    
+
+# seed 고정
+def seed_fix(SEED=456):
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
 
 
-f1 = evaluate.load('f1')
-
-
-def compute_metrics(eval_pred):
-    predictions, labels = eval_pred
-    predictions = np.argmax(predictions, axis=1)
-    return f1.compute(predictions=predictions, references=labels, average='macro')
-
-
-def run_main():
-    model_name = 'klue/bert-base'
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
-
+def data_setting(SEED, DATA_DIR, tokenizer):
     data = pd.read_csv(os.path.join(DATA_DIR, 'train.csv'))
     dataset_train, dataset_valid = train_test_split(data, test_size=0.3, random_state=SEED)
 
     data_train = BERTDataset(dataset_train, tokenizer)
     data_valid = BERTDataset(dataset_valid, tokenizer)
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer) # padding이 되어있지 않아도 자동으로 맞춰주는 역할
+
+    return data_train, data_valid, data_collator
+
+
+def compute_metrics(eval_pred):
+    f1 = evaluate.load('f1')
+    predictions, labels = eval_pred
+    predictions = np.argmax(predictions, axis=1)
+    return f1.compute(predictions=predictions, references=labels, average='macro')
+
+
+# 학습
+def train(SEED, model, OUTPUT_DIR, data_train, data_valid, data_collator):
     training_args = TrainingArguments(
         output_dir=OUTPUT_DIR,
         overwrite_output_dir=True,
@@ -84,12 +80,14 @@ def run_main():
         eval_steps=100,
         save_steps=100,
         save_total_limit=2,
+
         learning_rate=2e-05,
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-08,
         weight_decay=0.01,
-        lr_scheduler_type='linear',
+        lr_scheduler_type='linear', # 수정 불가
+
         per_device_train_batch_size=32,
         per_device_eval_batch_size=32,
         num_train_epochs=2,
@@ -110,13 +108,18 @@ def run_main():
 
     trainer.train()
 
-    dataset_test = pd.read_csv(os.path.join(DATA_DIR, 'test.csv'))
+    return model
 
+
+# 평가
+def evaluating(model, tokenizer, DATA_DIR, BASE_DIR):
     model.eval()
     preds = []
 
+    dataset_test = pd.read_csv(os.path.join(DATA_DIR, 'test.csv'))
+
     for idx, sample in tqdm(dataset_test.iterrows(), total=len(dataset_test), desc="Evaluating"):
-        inputs = tokenizer(sample['text'], return_tensors="pt").to(DEVICE)
+        inputs = tokenizer(sample['text'], return_tensors="pt").to(DEVICE) 
         with torch.no_grad():
             logits = model(**inputs).logits
             pred = torch.argmax(torch.nn.Softmax(dim=1)(logits), dim=1).cpu().numpy()
@@ -127,4 +130,21 @@ def run_main():
 
 
 if __name__ == "__main__":
-    run_main()
+    SEED = 456
+    seed_fix(SEED)
+
+    BASE_DIR = os.getcwd()
+    DATA_DIR = os.path.join(BASE_DIR, '../data')
+    OUTPUT_DIR = os.path.join(BASE_DIR, '../output')
+
+    DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    model_name = 'klue/bert-base'
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
+
+    data_train, data_valid, data_collator = data_setting(SEED, DATA_DIR, tokenizer)
+
+    trained_model = train(SEED, model, OUTPUT_DIR, data_train, data_valid, data_collator)
+
+    evaluating(trained_model, tokenizer, DATA_DIR, BASE_DIR)
