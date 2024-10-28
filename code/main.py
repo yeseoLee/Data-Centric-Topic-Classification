@@ -1,8 +1,10 @@
 import os
+import yaml
 import random
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import argparse
 
 import torch
 from torch.utils.data import Dataset
@@ -16,13 +18,12 @@ from sklearn.model_selection import train_test_split
 
 
 class BERTDataset(Dataset):
-    def __init__(self, data, tokenizer):
+    def __init__(self, data, tokenizer, padding):
         input_texts = data['text']
         targets = data['target']
-        self.inputs = []
-        self.labels = []
+        self.inputs = []; self.labels = []
         for text, label in zip(input_texts, targets):
-            tokenized_input = tokenizer(text, padding='max_length', truncation=True, return_tensors='pt')
+            tokenized_input = tokenizer(text, padding=padding, truncation=True, return_tensors='pt')
             self.inputs.append(tokenized_input)
             self.labels.append(torch.tensor(label))
 
@@ -35,7 +36,7 @@ class BERTDataset(Dataset):
 
     def __len__(self):
         return len(self.labels)
-    
+
 
 # seed 고정
 def seed_fix(SEED=456):
@@ -46,12 +47,19 @@ def seed_fix(SEED=456):
     torch.cuda.manual_seed_all(SEED)
 
 
-def data_setting(SEED, DATA_DIR, tokenizer):
-    data = pd.read_csv(os.path.join(DATA_DIR, 'train.csv'))
-    dataset_train, dataset_valid = train_test_split(data, test_size=0.3, random_state=SEED)
+# config parser로 가져오기
+def get_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default="config.yaml") # 입력 없을 시, 기본값으로 config.yaml을 가져옴
+    return parser.parse_args()
 
-    data_train = BERTDataset(dataset_train, tokenizer)
-    data_valid = BERTDataset(dataset_valid, tokenizer)
+
+def data_setting(CFG, SEED, data_dir, tokenizer):
+    data = pd.read_csv(data_dir)
+    dataset_train, dataset_valid = train_test_split(data, test_size=CFG["data"]["test_size"], random_state=SEED)
+
+    data_train = BERTDataset(dataset_train, tokenizer, CFG["data"]["padding"])
+    data_valid = BERTDataset(dataset_valid, tokenizer, CFG["data"]["padding"])
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer) # padding이 되어있지 않아도 자동으로 맞춰주는 역할
 
@@ -66,9 +74,9 @@ def compute_metrics(eval_pred):
 
 
 # 학습
-def train(SEED, model, OUTPUT_DIR, data_train, data_valid, data_collator):
+def train(SEED, model, output_dir, data_train, data_valid, data_collator):
     training_args = TrainingArguments(
-        output_dir=OUTPUT_DIR,
+        output_dir=output_dir,
         overwrite_output_dir=True,
         do_train=True,
         do_eval=True,
@@ -112,11 +120,11 @@ def train(SEED, model, OUTPUT_DIR, data_train, data_valid, data_collator):
 
 
 # 평가
-def evaluating(model, tokenizer, DATA_DIR, BASE_DIR):
+def evaluating(model, tokenizer, test_dir, output_dir):
     model.eval()
     preds = []
 
-    dataset_test = pd.read_csv(os.path.join(DATA_DIR, 'test.csv'))
+    dataset_test = pd.read_csv(test_dir)
 
     for idx, sample in tqdm(dataset_test.iterrows(), total=len(dataset_test), desc="Evaluating"):
         inputs = tokenizer(sample['text'], return_tensors="pt").to(DEVICE) 
@@ -126,25 +134,44 @@ def evaluating(model, tokenizer, DATA_DIR, BASE_DIR):
             preds.extend(pred)
 
     dataset_test['target'] = preds
-    dataset_test.to_csv(os.path.join(BASE_DIR, 'output.csv'), index=False)
+    dataset_test.to_csv(os.path.join(output_dir, 'output.csv'), index=False)
+
+
+# config 확인 (print)
+# def config_print(config, depth=0):
+#     for k, v in config.items():
+#         prefix = ["\t" * depth, k, ":"]
+
+#         if type(v) == dict:
+#             print(*prefix)
+#             config_print(v, depth + 1)
+#         else:
+#             prefix.append(v)
+#             print(*prefix)
 
 
 if __name__ == "__main__":
-    SEED = 456
+    parser = get_parser()
+    with open(os.path.join("../config", parser.config)) as f:
+        CFG = yaml.safe_load(f)
+        # config_print(CFG)
+
+    SEED = CFG["SEED"]
     seed_fix(SEED)
-
-    BASE_DIR = os.getcwd()
-    DATA_DIR = os.path.join(BASE_DIR, '../data')
-    OUTPUT_DIR = os.path.join(BASE_DIR, '../output')
-
+    
     DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
+    data_dir = CFG["data"]["train_path"]
+    output_dir = CFG["data"]["output_dir"]
+    test_dir = CFG["data"]["test_path"]
 
     model_name = 'klue/bert-base'
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 
-    data_train, data_valid, data_collator = data_setting(SEED, DATA_DIR, tokenizer)
+    data_train, data_valid, data_collator = data_setting(CFG, SEED, data_dir, tokenizer)
 
-    trained_model = train(SEED, model, OUTPUT_DIR, data_train, data_valid, data_collator)
+    trained_model = train(SEED, model, output_dir, data_train, data_valid, data_collator)
 
-    evaluating(trained_model, tokenizer, DATA_DIR, BASE_DIR)
+    evaluating(trained_model, tokenizer, test_dir, output_dir)

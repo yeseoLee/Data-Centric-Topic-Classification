@@ -1,0 +1,9 @@
+SEED: 456
+data:
+  train_path: ../data/train.csv
+  test_path: ../data/test.csv
+  output_dir: ../output
+  test_size: 0.3
+  padding: True # max_length
+train:
+  batch_size: 32
