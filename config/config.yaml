@@ -7,4 +7,4 @@ data:
   padding: max_length
 train:
   batch_size: 32
-  learning_rate: 2e-05
+  lr: 2e-05
