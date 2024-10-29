@@ -66,14 +66,14 @@ def get_parser():
     return parser.parse_args()
 
 
-def data_setting(CFG, SEED, data_dir, tokenizer):
-    data = pd.read_csv(data_dir)
+def data_setting(test_size, max_length, SEED, train_path, tokenizer):
+    data = pd.read_csv(train_path)
     dataset_train, dataset_valid = train_test_split(
-        data, test_size=CFG["data"]["test_size"], random_state=SEED
+        data, test_size=test_size, random_state=SEED
     )
 
-    data_train = BERTDataset(dataset_train, tokenizer, CFG["data"]["max_length"])
-    data_valid = BERTDataset(dataset_valid, tokenizer, CFG["data"]["max_length"])
+    data_train = BERTDataset(dataset_train, tokenizer, max_length)
+    data_valid = BERTDataset(dataset_valid, tokenizer, max_length)
 
     data_collator = DataCollatorWithPadding(
         tokenizer=tokenizer
@@ -90,7 +90,17 @@ def compute_metrics(eval_pred):
 
 
 # 학습
-def train(SEED, CFG, model, output_dir, data_train, data_valid, data_collator):
+def train(
+    SEED,
+    train_batch_size,
+    eval_batch_size,
+    learning_rate,
+    model,
+    output_dir,
+    data_train,
+    data_valid,
+    data_collator,
+):
     training_args = TrainingArguments(
         output_dir=output_dir,
         overwrite_output_dir=True,
@@ -104,14 +114,14 @@ def train(SEED, CFG, model, output_dir, data_train, data_valid, data_collator):
         # eval_steps=100,
         # save_steps=100,
         save_total_limit=2,
-        learning_rate=float(CFG["lr"]),
+        learning_rate=float(learning_rate),
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-08,
         weight_decay=0.01,
         lr_scheduler_type="linear",
-        per_device_train_batch_size=CFG["train_batch_size"],
-        per_device_eval_batch_size=CFG["eval_batch_size"],
+        per_device_train_batch_size=train_batch_size,
+        per_device_eval_batch_size=eval_batch_size,
         num_train_epochs=2,
         load_best_model_at_end=True,
         metric_for_best_model="eval_f1",
@@ -134,11 +144,11 @@ def train(SEED, CFG, model, output_dir, data_train, data_valid, data_collator):
 
 
 # 평가
-def evaluating(model, tokenizer, test_dir, output_dir):
+def evaluating(model, tokenizer, test_path, output_dir):
     model.eval()
     preds = []
 
-    dataset_test = pd.read_csv(test_dir)
+    dataset_test = pd.read_csv(test_path)
 
     for idx, sample in tqdm(
         dataset_test.iterrows(), total=len(dataset_test), desc="Evaluating"
@@ -166,14 +176,14 @@ def evaluating(model, tokenizer, test_dir, output_dir):
 #             print(*prefix)
 
 
-def wandb_name(CFG):
-    match = re.search(r"([^/]+)\.csv$", CFG["data"]["train_path"])
-    train_data_name = match.group(1) if match else "unknown"
-    lr = CFG["train"]["lr"]
-    bs = CFG["train"]["train_batch_size"]
-    ts = CFG["data"]["test_size"]
-    user_name = CFG["wandb"]["entity"]
-    return f"{user_name}_{train_data_name}_{lr}_{bs}_{ts}"
+def wandb_name(train_path, train_lr, train_batch_size, test_size, wandb_user_name):
+    match = re.search(r"([^/]+)\.csv$", train_path)
+    data_name = match.group(1) if match else "unknown"
+    lr = train_lr
+    bs = train_batch_size
+    ts = test_size
+    user_name = wandb_user_name
+    return f"{user_name}_{data_name}_{lr}_{bs}_{ts}"
 
 
 if __name__ == "__main__":
@@ -182,17 +192,34 @@ if __name__ == "__main__":
         CFG = yaml.safe_load(f)
         # config_print(CFG)
 
-    wandb.init(project=CFG["wandb"]["project"], name=wandb_name(CFG))
-
+    # config의 파라미터를 불러와 변수에 저장함.
+    # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
     SEED = CFG["SEED"]
+
+    train_path = CFG["data"]["train_path"]
+    test_path = CFG["data"]["test_path"]
+    output_dir = CFG["data"]["output_dir"]
+    test_size = CFG["data"]["test_size"]
+    max_length = CFG["data"]["max_length"]
+
+    config_train = CFG["train"]
+    train_batch_size = CFG["train"]["train_batch_size"]
+    eval_batch_size = CFG["train"]["eval_batch_size"]
+    learning_rate = CFG["train"]["lr"]
+
+    wandb_project = CFG["wandb"]["project"]
+    wandb_user_name = CFG["wandb"]["entity"]
+
+    wandb.init(
+        project=wandb_project,
+        name=wandb_name(
+            train_path, learning_rate, train_batch_size, test_size, wandb_user_name
+        ),
+    )
+
     seed_fix(SEED)
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
-    # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
-    data_dir = CFG["data"]["train_path"]
-    output_dir = CFG["data"]["output_dir"]
-    test_dir = CFG["data"]["test_path"]
 
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -200,12 +227,22 @@ if __name__ == "__main__":
         model_name, num_labels=7
     ).to(DEVICE)
 
-    data_train, data_valid, data_collator = data_setting(CFG, SEED, data_dir, tokenizer)
-
-    trained_model = train(
-        SEED, CFG["train"], model, output_dir, data_train, data_valid, data_collator
+    data_train, data_valid, data_collator = data_setting(
+        test_size, max_length, SEED, train_path, tokenizer
     )
 
-    evaluating(trained_model, tokenizer, test_dir, output_dir)
+    trained_model = train(
+        SEED,
+        train_batch_size,
+        eval_batch_size,
+        learning_rate,
+        model,
+        output_dir,
+        data_train,
+        data_valid,
+        data_collator,
+    )
+
+    evaluating(trained_model, tokenizer, test_path, output_dir)
 
     wandb.finish()
