@@ -10,3 +10,5 @@ argparse
 pyyaml
 tqdm
 wandb
+
+pre-commit
