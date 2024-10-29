@@ -7,6 +7,6 @@ sentencepiece==0.1.99
 evaluate==0.4.3
 accelerate==0.20.3
 argparse
-pyyamml
+pyyaml
 tqdm
 wandb
