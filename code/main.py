@@ -18,14 +18,14 @@ from sklearn.model_selection import train_test_split
 
 
 class BERTDataset(Dataset):
-    def __init__(self, data, tokenizer, padding):
+    def __init__(self, data, tokenizer, max_length):
         input_texts = data["text"]
         targets = data["target"]
         self.inputs = []
         self.labels = []
         for text, label in zip(input_texts, targets):
             tokenized_input = tokenizer(
-                text, padding=padding, truncation=True, return_tensors="pt"
+                text, padding='max_length', truncation=True, max_length=max_length, return_tensors="pt"
             )
             self.inputs.append(tokenized_input)
             self.labels.append(torch.tensor(label))
@@ -65,8 +65,8 @@ def data_setting(CFG, SEED, data_dir, tokenizer):
         data, test_size=CFG["data"]["test_size"], random_state=SEED
     )
 
-    data_train = BERTDataset(dataset_train, tokenizer, CFG["data"]["padding"])
-    data_valid = BERTDataset(dataset_valid, tokenizer, CFG["data"]["padding"])
+    data_train = BERTDataset(dataset_train, tokenizer, CFG["data"]["max_length"])
+    data_valid = BERTDataset(dataset_valid, tokenizer, CFG["data"]["max_length"])
 
     data_collator = DataCollatorWithPadding(
         tokenizer=tokenizer
