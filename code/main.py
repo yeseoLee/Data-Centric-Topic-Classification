@@ -8,6 +8,7 @@ import argparse
 
 import torch
 from torch.utils.data import Dataset
+from huggingface_hub import HfApi, Repository, create_repo
 
 import wandb
 import re
@@ -186,6 +187,19 @@ def wandb_name(train_path, train_lr, train_batch_size, test_size, wandb_user_nam
     return f"{user_name}_{data_name}_{lr}_{bs}_{ts}"
 
 
+def upload_to_huggingface(model, tokenizer, hf_token, hf_organization, hf_repo_id):
+    model.push_to_hub(
+        repo_id=hf_repo_id,
+        organization=hf_organization,
+        use_auth_token=hf_token
+    )
+    tokenizer.push_to_hub(
+        repo_id=hf_repo_id,
+        organization=hf_organization,
+        use_auth_token=hf_token
+    )
+
+
 if __name__ == "__main__":
     parser = get_parser()
     with open(os.path.join("../config", parser.config)) as f:
@@ -212,6 +226,11 @@ if __name__ == "__main__":
     wandb_project = CFG["wandb"]["project"]
     wandb_user_name = CFG["wandb"]["entity"]
 
+    # Hugging Face 업로드 설정 확인 없어도 오류안뜨도록 .get형태로 불러옴
+    hf_config = CFG.get("huggingface", {})
+    hf_token = hf_config.get("token")
+    hf_organization = hf_config.get("organization")
+    hf_repo_id = hf_config.get("repo_id")
 
     if DEBUG_MODE:
         print("Debug mode is ON. Displaying config parameters:")
@@ -227,6 +246,8 @@ if __name__ == "__main__":
     seed_fix(SEED)
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    if DEBUG_MODE:
+        print(f"DEVICE : {DEVICE}")
 
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -251,5 +272,11 @@ if __name__ == "__main__":
     )
 
     evaluating(trained_model, tokenizer, test_path, output_dir)
+
+    if not (hf_token and hf_organization and hf_repo_id):
+        print("Hugging Face 설정이 누락되었습니다. 모델 업로드가 실행되지 않습니다.")
+    else:
+        # 모델 업로드
+        upload_to_huggingface(trained_model, tokenizer, hf_token, hf_organization, f"{hf_repo_id}_{wandb_user_name}")
 
     wandb.finish()
