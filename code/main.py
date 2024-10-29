@@ -25,7 +25,11 @@ class BERTDataset(Dataset):
         self.labels = []
         for text, label in zip(input_texts, targets):
             tokenized_input = tokenizer(
-                text, padding='max_length', truncation=True, max_length=max_length, return_tensors="pt"
+                text,
+                padding="max_length",
+                truncation=True,
+                max_length=max_length,
+                return_tensors="pt",
             )
             self.inputs.append(tokenized_input)
             self.labels.append(torch.tensor(label))
@@ -102,7 +106,7 @@ def train(SEED, CFG, model, output_dir, data_train, data_valid, data_collator):
         adam_beta2=0.999,
         adam_epsilon=1e-08,
         weight_decay=0.01,
-        lr_scheduler_type="linear",  
+        lr_scheduler_type="linear",
         per_device_train_batch_size=CFG["batch_size"],
         per_device_eval_batch_size=CFG["batch_size"],
         num_train_epochs=2,
