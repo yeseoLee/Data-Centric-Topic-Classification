@@ -83,7 +83,7 @@ def compute_metrics(eval_pred):
 
 
 # 학습
-def train(SEED, model, output_dir, data_train, data_valid, data_collator):
+def train(SEED, CFG, model, output_dir, data_train, data_valid, data_collator):
     training_args = TrainingArguments(
         output_dir=output_dir,
         overwrite_output_dir=True,
@@ -97,14 +97,14 @@ def train(SEED, model, output_dir, data_train, data_valid, data_collator):
         eval_steps=100,
         save_steps=100,
         save_total_limit=2,
-        learning_rate=2e-05,
+        learning_rate=CFG["lr"],
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-08,
         weight_decay=0.01,
-        lr_scheduler_type="linear",  # 수정 불가
-        per_device_train_batch_size=32,
-        per_device_eval_batch_size=32,
+        lr_scheduler_type="linear",  
+        per_device_train_batch_size=CFG["batch_size"],
+        per_device_eval_batch_size=CFG["batch_size"],
         num_train_epochs=2,
         load_best_model_at_end=True,
         metric_for_best_model="eval_f1",
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     data_train, data_valid, data_collator = data_setting(CFG, SEED, data_dir, tokenizer)
 
     trained_model = train(
-        SEED, model, output_dir, data_train, data_valid, data_collator
+        SEED, CFG["train"], model, output_dir, data_train, data_valid, data_collator
     )
 
     evaluating(trained_model, tokenizer, test_dir, output_dir)
