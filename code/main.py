@@ -189,14 +189,10 @@ def wandb_name(train_path, train_lr, train_batch_size, test_size, wandb_user_nam
 
 def upload_to_huggingface(model, tokenizer, hf_token, hf_organization, hf_repo_id):
     model.push_to_hub(
-        repo_id=hf_repo_id,
-        organization=hf_organization,
-        use_auth_token=hf_token
+        repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
     )
     tokenizer.push_to_hub(
-        repo_id=hf_repo_id,
-        organization=hf_organization,
-        use_auth_token=hf_token
+        repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
     )
 
 
@@ -277,6 +273,12 @@ if __name__ == "__main__":
         print("Hugging Face 설정이 누락되었습니다. 모델 업로드가 실행되지 않습니다.")
     else:
         # 모델 업로드
-        upload_to_huggingface(trained_model, tokenizer, hf_token, hf_organization, f"{hf_repo_id}_{wandb_user_name}")
+        upload_to_huggingface(
+            trained_model,
+            tokenizer,
+            hf_token,
+            hf_organization,
+            f"{hf_repo_id}_{wandb_user_name}",
+        )
 
     wandb.finish()
