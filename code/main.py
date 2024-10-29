@@ -19,19 +19,22 @@ from sklearn.model_selection import train_test_split
 
 class BERTDataset(Dataset):
     def __init__(self, data, tokenizer, padding):
-        input_texts = data['text']
-        targets = data['target']
-        self.inputs = []; self.labels = []
+        input_texts = data["text"]
+        targets = data["target"]
+        self.inputs = []
+        self.labels = []
         for text, label in zip(input_texts, targets):
-            tokenized_input = tokenizer(text, padding=padding, truncation=True, return_tensors='pt')
+            tokenized_input = tokenizer(
+                text, padding=padding, truncation=True, return_tensors="pt"
+            )
             self.inputs.append(tokenized_input)
             self.labels.append(torch.tensor(label))
 
     def __getitem__(self, idx):
         return {
-            'input_ids': self.inputs[idx]['input_ids'].squeeze(0),
-            'attention_mask': self.inputs[idx]['attention_mask'].squeeze(0),
-            'labels': self.labels[idx].squeeze(0)
+            "input_ids": self.inputs[idx]["input_ids"].squeeze(0),
+            "attention_mask": self.inputs[idx]["attention_mask"].squeeze(0),
+            "labels": self.labels[idx].squeeze(0),
         }
 
     def __len__(self):
@@ -50,27 +53,33 @@ def seed_fix(SEED=456):
 # config parser로 가져오기
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="config.yaml") # 입력 없을 시, 기본값으로 config.yaml을 가져옴
+    parser.add_argument(
+        "--config", type=str, default="config.yaml"
+    )  # 입력 없을 시, 기본값으로 config.yaml을 가져옴
     return parser.parse_args()
 
 
 def data_setting(CFG, SEED, data_dir, tokenizer):
     data = pd.read_csv(data_dir)
-    dataset_train, dataset_valid = train_test_split(data, test_size=CFG["data"]["test_size"], random_state=SEED)
+    dataset_train, dataset_valid = train_test_split(
+        data, test_size=CFG["data"]["test_size"], random_state=SEED
+    )
 
     data_train = BERTDataset(dataset_train, tokenizer, CFG["data"]["padding"])
     data_valid = BERTDataset(dataset_valid, tokenizer, CFG["data"]["padding"])
 
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer) # padding이 되어있지 않아도 자동으로 맞춰주는 역할
+    data_collator = DataCollatorWithPadding(
+        tokenizer=tokenizer
+    )  # padding이 되어있지 않아도 자동으로 맞춰주는 역할
 
     return data_train, data_valid, data_collator
 
 
 def compute_metrics(eval_pred):
-    f1 = evaluate.load('f1')
+    f1 = evaluate.load("f1")
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
-    return f1.compute(predictions=predictions, references=labels, average='macro')
+    return f1.compute(predictions=predictions, references=labels, average="macro")
 
 
 # 학습
@@ -81,28 +90,26 @@ def train(SEED, model, output_dir, data_train, data_valid, data_collator):
         do_train=True,
         do_eval=True,
         do_predict=True,
-        logging_strategy='steps',
-        eval_strategy='steps',
-        save_strategy='steps',
+        logging_strategy="steps",
+        eval_strategy="steps",
+        save_strategy="steps",
         logging_steps=100,
         eval_steps=100,
         save_steps=100,
         save_total_limit=2,
-
         learning_rate=2e-05,
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-08,
         weight_decay=0.01,
-        lr_scheduler_type='linear', # 수정 불가
-
+        lr_scheduler_type="linear",  # 수정 불가
         per_device_train_batch_size=32,
         per_device_eval_batch_size=32,
         num_train_epochs=2,
         load_best_model_at_end=True,
-        metric_for_best_model='eval_f1',
+        metric_for_best_model="eval_f1",
         greater_is_better=True,
-        seed=SEED
+        seed=SEED,
     )
 
     trainer = Trainer(
@@ -126,15 +133,17 @@ def evaluating(model, tokenizer, test_dir, output_dir):
 
     dataset_test = pd.read_csv(test_dir)
 
-    for idx, sample in tqdm(dataset_test.iterrows(), total=len(dataset_test), desc="Evaluating"):
-        inputs = tokenizer(sample['text'], return_tensors="pt").to(DEVICE) 
+    for idx, sample in tqdm(
+        dataset_test.iterrows(), total=len(dataset_test), desc="Evaluating"
+    ):
+        inputs = tokenizer(sample["text"], return_tensors="pt").to(DEVICE)
         with torch.no_grad():
             logits = model(**inputs).logits
             pred = torch.argmax(torch.nn.Softmax(dim=1)(logits), dim=1).cpu().numpy()
             preds.extend(pred)
 
-    dataset_test['target'] = preds
-    dataset_test.to_csv(os.path.join(output_dir, 'output.csv'), index=False)
+    dataset_test["target"] = preds
+    dataset_test.to_csv(os.path.join(output_dir, "output.csv"), index=False)
 
 
 # config 확인 (print)
@@ -158,20 +167,24 @@ if __name__ == "__main__":
 
     SEED = CFG["SEED"]
     seed_fix(SEED)
-    
-    DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
     data_dir = CFG["data"]["train_path"]
     output_dir = CFG["data"]["output_dir"]
     test_dir = CFG["data"]["test_path"]
 
-    model_name = 'klue/bert-base'
+    model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_name, num_labels=7
+    ).to(DEVICE)
 
     data_train, data_valid, data_collator = data_setting(CFG, SEED, data_dir, tokenizer)
 
-    trained_model = train(SEED, model, output_dir, data_train, data_valid, data_collator)
+    trained_model = train(
+        SEED, model, output_dir, data_train, data_valid, data_collator
+    )
 
     evaluating(trained_model, tokenizer, test_dir, output_dir)
