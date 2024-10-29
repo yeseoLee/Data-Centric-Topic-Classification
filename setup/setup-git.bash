@@ -31,7 +31,7 @@ if id "$user" &>/dev/null; then
     sudo -u "$user" git config --global credential.helper "cache --timeout=360000"
 
     # git clone
-    sudo -u "$user" git clone https://"$token"@github.com:boostcampaitech7/level2-nlp-datacentric-nlp-04.git
+    sudo -u "$user" git clone https://"$token"@github.com/boostcampaitech7/level2-nlp-datacentric-nlp-04.git
 else
     echo "User $user does not exist."
     exit 1
