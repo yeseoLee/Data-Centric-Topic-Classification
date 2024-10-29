@@ -97,7 +97,7 @@ def train(SEED, CFG, model, output_dir, data_train, data_valid, data_collator):
         eval_steps=100,
         save_steps=100,
         save_total_limit=2,
-        learning_rate=CFG["lr"],
+        learning_rate=float(CFG["lr"]),
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-08,
