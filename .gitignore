@@ -16,3 +16,6 @@ venv.bak/
 *DS_Store
 
 # custom
+data/
+output/
+**/wandb/

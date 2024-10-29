@@ -10,5 +10,6 @@ argparse
 pyyaml
 tqdm
 wandb
+huggingface_hub
 
 pre-commit

@@ -11,4 +11,10 @@ train:
   lr: 2e-05
 wandb:
   project: Data Centric
-  entity: sujin
+  entity: minseo
+# 커밋시 절대 토큰을 추가하지 말 것. 향후 .env 파일로 분리하는 등 보안 개선 예정
+huggingface:
+  token:
+  organization: paper-company
+  repo_id: bert-base-pretrained
+DEBUG : True
