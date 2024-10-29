@@ -164,16 +164,16 @@ def evaluating(model, tokenizer, test_path, output_dir):
 
 
 # config 확인 (print)
-# def config_print(config, depth=0):
-#     for k, v in config.items():
-#         prefix = ["\t" * depth, k, ":"]
+def config_print(config, depth=0):
+    for k, v in config.items():
+        prefix = ["\t" * depth, k, ":"]
 
-#         if type(v) == dict:
-#             print(*prefix)
-#             config_print(v, depth + 1)
-#         else:
-#             prefix.append(v)
-#             print(*prefix)
+        if type(v) == dict:
+            print(*prefix)
+            config_print(v, depth + 1)
+        else:
+            prefix.append(v)
+            print(*prefix)
 
 
 def wandb_name(train_path, train_lr, train_batch_size, test_size, wandb_user_name):
@@ -190,11 +190,13 @@ if __name__ == "__main__":
     parser = get_parser()
     with open(os.path.join("../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
-        # config_print(CFG)
 
     # config의 파라미터를 불러와 변수에 저장함.
     # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
     SEED = CFG["SEED"]
+
+    # default는 False, Debug 동작설정
+    DEBUG_MODE = CFG.get("DEBUG", False)
 
     train_path = CFG["data"]["train_path"]
     test_path = CFG["data"]["test_path"]
@@ -209,6 +211,11 @@ if __name__ == "__main__":
 
     wandb_project = CFG["wandb"]["project"]
     wandb_user_name = CFG["wandb"]["entity"]
+
+
+    if DEBUG_MODE:
+        print("Debug mode is ON. Displaying config parameters:")
+        config_print(CFG)
 
     wandb.init(
         project=wandb_project,
