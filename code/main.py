@@ -9,6 +9,9 @@ import argparse
 import torch
 from torch.utils.data import Dataset
 
+import wandb
+import re
+
 import evaluate
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers import DataCollatorWithPadding
@@ -163,11 +166,23 @@ def evaluating(model, tokenizer, test_dir, output_dir):
 #             print(*prefix)
 
 
+def wandb_name(CFG):
+    match = re.search(r"([^/]+)\.csv$", CFG["data"]["train_path"])
+    train_data_name = match.group(1) if match else "unknown"
+    lr = CFG["train"]["lr"]
+    bs = CFG["train"]["train_batch_size"]
+    ts = CFG["data"]["test_size"]
+    user_name = CFG["wandb"]["entity"]
+    return f"{user_name}_{train_data_name}_{lr}_{bs}_{ts}"
+
+
 if __name__ == "__main__":
     parser = get_parser()
     with open(os.path.join("../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
         # config_print(CFG)
+
+    wandb.init(project=CFG["wandb"]["project"], name=wandb_name(CFG))
 
     SEED = CFG["SEED"]
     seed_fix(SEED)
@@ -192,3 +207,5 @@ if __name__ == "__main__":
     )
 
     evaluating(trained_model, tokenizer, test_dir, output_dir)
+
+    wandb.finish()

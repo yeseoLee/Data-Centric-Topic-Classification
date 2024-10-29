@@ -9,3 +9,6 @@ train:
   train_batch_size: 32
   eval_batch_size: 32
   lr: 2e-05
+wandb:
+  project: Data Centric
+  entity: sujin
