@@ -16,6 +16,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: psf/black@stable
         with:
-          options: "-l 79 --diff --check"
+          options: "-l 88 --diff --check"
           src: "./"
-          jupyter: true
