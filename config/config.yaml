@@ -1,0 +1,11 @@
+SEED: 456
+data:
+  train_path: ../data/train.csv
+  test_path: ../data/test.csv
+  output_dir: ../output
+  test_size: 0.3
+  max_length: 30
+train:
+  train_batch_size: 32
+  eval_batch_size: 32
+  lr: 2e-05
