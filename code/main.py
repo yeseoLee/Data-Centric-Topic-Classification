@@ -215,7 +215,9 @@ def load_env_file(filepath=".env"):
         print(f"오류 발생: .env 파일 로드 중 예외가 발생했습니다: {e}")
 
 
-def check_dataset(hf_organization, hf_token, data_folder_name, dataset_repo_id="origin"):
+def check_dataset(
+    hf_organization, hf_token, data_folder_name, dataset_repo_id="origin"
+):
     """
     로컬에 데이터셋 폴더가 없으면 Hugging Face에서 데이터를 다운로드하여 로컬에 CSV로 저장하는 함수.
     데이터셋을 로컬에 저장만 하고 반환값은 없습니다.
@@ -233,7 +235,9 @@ def check_dataset(hf_organization, hf_token, data_folder_name, dataset_repo_id="
 
     # Check if local data folder exists
     if not os.path.exists(folder_path):
-        print(f"로컬에 '{folder_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다.")
+        print(
+            f"로컬에 '{folder_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다."
+        )
 
         # Load dataset from Hugging Face if local folder is missing
         full_repo_id = f"{hf_organization}/datacentric-{dataset_repo_id}"
@@ -249,6 +253,7 @@ def check_dataset(hf_organization, hf_token, data_folder_name, dataset_repo_id="
 
     else:
         print(f"로컬파일을 로드합니다.")
+
 
 if __name__ == "__main__":
     parser = get_parser()

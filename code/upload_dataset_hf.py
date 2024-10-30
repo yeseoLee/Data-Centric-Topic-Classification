@@ -24,11 +24,17 @@ def upload_dataset_folder_to_hub(foler_name, token, private=True):
     # 리포지토리 존재 여부 확인
     try:
         api.repo_info(repo_id, repo_type="dataset", token=token)
-        print(f"'{repo_id}' 리포지토리가 이미 존재합니다. 기존 리포지토리에 데이터셋을 업로드합니다.")
+        print(
+            f"'{repo_id}' 리포지토리가 이미 존재합니다. 기존 리포지토리에 데이터셋을 업로드합니다."
+        )
     except Exception as e:
         # 리포지토리가 없으면 생성
-        print(f"'{repo_id}' 리포지토리가 존재하지 않습니다. 새로 생성한 후 업로드합니다.")
-        api.create_repo(repo_id=repo_id, repo_type="dataset", private=private, token=token)
+        print(
+            f"'{repo_id}' 리포지토리가 존재하지 않습니다. 새로 생성한 후 업로드합니다."
+        )
+        api.create_repo(
+            repo_id=repo_id, repo_type="dataset", private=private, token=token
+        )
 
     # 폴더 내 데이터 파일 경로 설정
     folder_path = os.path.join("..", "data", foler_name)
@@ -50,16 +56,15 @@ def upload_dataset_folder_to_hub(foler_name, token, private=True):
     print(f"데이터셋이 '{repo_id}'에 업로드되었습니다.")
 
 
-if '__main__' == __name__:
+if "__main__" == __name__:
     # 허깅페이스 API키 관리
     load_env_file("../setup/.env")
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
 
-
     # folder name 입력
     # origin 입력시 paper-company/datacentric-origin 형태로 저장
     #########################################
-    foler_name = 'origin'
+    folder_name = "origin"
     #########################################
 
-    upload_dataset_folder_to_hub(foler_name, hf_token, private=True)
+    upload_dataset_folder_to_hub(folder_name, hf_token, private=True)
