@@ -20,8 +20,9 @@ import yaml
 import argparse
 
 """
-실행시 output 경로에 훈련된 모델과 새로 라벨링된 retrained_data.csv와
-각 라벨의 확률이 포함된 cleaned_data.csv이 생성됩니다.
+1. 훈련된 모델: 훈련이 완료된 모델이 지정된 output 경로에 저장됩니다.
+2. retrained_data.csv: 이 파일은 새롭게 라벨링된 훈련 데이터셋으로, 이후 모델 훈련 시 사용할 수 있습니다.
+3. cleaned_data.csv: 각 라벨의 확률이 포함된 데이터셋으로, 모델의 예측 결과를 확인할 수 있습니다.
 """
 
 
