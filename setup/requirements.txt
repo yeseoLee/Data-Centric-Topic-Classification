@@ -6,6 +6,8 @@ transformers==4.25.1
 sentencepiece==0.1.99
 evaluate==0.4.3
 accelerate==0.20.3
+cleanlab==2.7.0
+datasets==3.0.2
 argparse
 pyyaml
 tqdm
