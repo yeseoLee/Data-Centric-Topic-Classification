@@ -12,6 +12,7 @@ from huggingface_hub import HfApi, Repository, create_repo
 
 import wandb
 import re
+from dotenv import load_dotenv
 
 import evaluate
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -195,14 +196,31 @@ def upload_to_huggingface(model, tokenizer, hf_token, hf_organization, hf_repo_i
         tokenizer.push_to_hub(
             repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
         )
+        print(f"your model pushed successfully in {hf_repo_id}, hugging face")
     except Exception as e:
         print(f"An error occurred while uploading to Hugging Face: {e}")
+
+
+def load_env_file(filepath=".env"):
+    try:
+        # .env 파일 로드 시도
+        if load_dotenv(filepath):
+            print(f".env 파일을 성공적으로 로드했습니다: {filepath}")
+        else:
+            raise FileNotFoundError  # 파일이 없으면 예외 발생
+    except FileNotFoundError:
+        print(f"경고: 지정된 .env 파일을 찾을 수 없습니다: {filepath}")
+    except Exception as e:
+        print(f"오류 발생: .env 파일 로드 중 예외가 발생했습니다: {e}")
 
 
 if __name__ == "__main__":
     parser = get_parser()
     with open(os.path.join("../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
+
+    # 허깅페이스 API키 관리
+    load_env_file("../setup/.env")
 
     # config의 파라미터를 불러와 변수에 저장함.
     # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
@@ -227,7 +245,7 @@ if __name__ == "__main__":
 
     # Hugging Face 업로드 설정 확인 없어도 오류안뜨도록 .get형태로 불러옴
     hf_config = CFG.get("huggingface", {})
-    hf_token = hf_config.get("token")
+    hf_token = os.getenv("HUGGINGFACE_TOKEN")
     hf_organization = "paper-company"
     hf_repo_id = hf_config.get("repo_id")
 
