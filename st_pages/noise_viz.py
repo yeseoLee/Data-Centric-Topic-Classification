@@ -72,7 +72,8 @@ def show(df):
         "노이즈 비율 카테고리 선택:", ["None", "low_noise", "norm_noise", "high_noise"]
     )
     target_value = st.selectbox(
-        "target값 선택 :", ["None"] + list(df["target"].sort_values(ascending=True).unique())
+        "target값 선택 :",
+        ["None"] + list(df["target"].sort_values(ascending=True).unique()),
     )
 
     if noise_category == "low_noise":
@@ -114,6 +115,6 @@ def show(df):
     noise_data.plot(kind="bar", ax=ax, color=["blue", "green", "red"])
     ax.set_xlabel("Target")
     ax.set_ylabel("Frequency")
-    ax.legend(title="Noise Category")
+    ax.legend(title="Noise Category", bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.xticks(rotation=0)
     st.pyplot(fig)
