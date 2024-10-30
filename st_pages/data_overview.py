@@ -10,7 +10,7 @@ df = load_data()
 def show(df):
     # 타겟값 기준으로 데이터 직접 보기
     st.header("라벨값 기준으로 데이터 살펴보기")
-    target_value = st.selectbox("label :", df["target"].unique())
+    target_value = st.selectbox("label :", df["target"].sort_values(ascending=True).unique())
     filtered_data = df[df["target"] == target_value]
     st.write(filtered_data)
 
