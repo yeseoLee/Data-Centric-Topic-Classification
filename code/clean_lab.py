@@ -19,8 +19,10 @@ import re
 import yaml
 import argparse
 
-
-
+'''
+실행시 output 경로에 훈련된 모델과 새로 라벨링된 retrained_data.csv와 
+각 라벨의 확률이 포함된 cleaned_data.csv이 생성됩니다.
+'''
 class BERTDataset(Dataset):
     def __init__(self, data, tokenizer, max_length):
         input_texts = data["text"]
