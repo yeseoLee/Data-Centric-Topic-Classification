@@ -19,10 +19,12 @@ import re
 import yaml
 import argparse
 
-'''
-실행시 output 경로에 훈련된 모델과 새로 라벨링된 retrained_data.csv와 
+"""
+실행시 output 경로에 훈련된 모델과 새로 라벨링된 retrained_data.csv와
 각 라벨의 확률이 포함된 cleaned_data.csv이 생성됩니다.
-'''
+"""
+
+
 class BERTDataset(Dataset):
     def __init__(self, data, tokenizer, max_length):
         input_texts = data["text"]
@@ -91,36 +93,39 @@ def compute_metrics(eval_pred):
     predictions = np.argmax(predictions, axis=1)
     return f1.compute(predictions=predictions, references=labels, average="macro")
 
+
 def clean_labels(data, pred_probs):
     # Cleanlab의 find_label_issues 함수를 사용하여 레이블 이슈 찾기
     ordered_label_issues = find_label_issues(
-        labels=data['target'], 
-        pred_probs=pred_probs, 
-        return_indices_ranked_by='self_confidence'
+        labels=data["target"],
+        pred_probs=pred_probs,
+        return_indices_ranked_by="self_confidence",
     )
-    
+
     # 새로운 레이블 열 생성 (초기값은 원래 레이블)
-    data["new_label"] = data['target']
-    
+    data["new_label"] = data["target"]
+
     print("Number of label issues found:", len(ordered_label_issues))
-    
+
     # 식별된 레이블 이슈에 대해 새로운 레이블 할당
     for issue_idx in ordered_label_issues:
         new_label = data.iloc[issue_idx]["prob"].argmax()
         data.iloc[issue_idx, data.columns.get_loc("new_label")] = new_label
-    
+
     return data
+
 
 def save_modified_data(data):
     # 새로운 데이터프레임 생성: ID, text, new_label 열만 포함
-    modified_data = data[['ID', 'text', 'new_label']].copy()
-    
+    modified_data = data[["ID", "text", "new_label"]].copy()
+
     # 새로운 라벨로 'target' 열 이름 변경
-    modified_data.rename(columns={'new_label': 'target'}, inplace=True)
-    
+    modified_data.rename(columns={"new_label": "target"}, inplace=True)
+
     # 수정된 데이터프레임을 CSV 파일로 저장
     modified_data.to_csv(os.path.join(output_dir, "retrained_data.csv"), index=False)
     print("수정된 데이터가 retrained_data.csv로 저장되었습니다.")
+
 
 def train(
     SEED,
@@ -132,8 +137,6 @@ def train(
     data_train,
     data_valid,
     data_collator,
-
-
 ):
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -162,23 +165,23 @@ def train(
         greater_is_better=True,
         seed=SEED,
     )
-    
+
     data = pd.read_csv(train_path)
     prob_list = []
     skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=SEED)
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    for i, (train_index, test_index) in enumerate(skf.split(data, data['target'])):
-        data_train = BERTDataset(data.iloc[train_index], tokenizer,max_length)
-        data_eval = BERTDataset(data.iloc[test_index], tokenizer,max_length)
+    for i, (train_index, test_index) in enumerate(skf.split(data, data["target"])):
+        data_train = BERTDataset(data.iloc[train_index], tokenizer, max_length)
+        data_eval = BERTDataset(data.iloc[test_index], tokenizer, max_length)
 
         trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=data_train,
-        eval_dataset=data_valid,
-        data_collator=data_collator,
-        compute_metrics=compute_metrics,
+            model=model,
+            args=training_args,
+            train_dataset=data_train,
+            eval_dataset=data_valid,
+            data_collator=data_collator,
+            compute_metrics=compute_metrics,
         )
 
         trainer.train()
@@ -211,8 +214,6 @@ def train(
     save_modified_data(cleaned_data)
 
     return model  # 훈련된 모델 반환
-
-
 
 
 # config 확인 (print)
@@ -320,5 +321,3 @@ if __name__ == "__main__":
         data_valid,
         data_collator,
     )
-
-   
