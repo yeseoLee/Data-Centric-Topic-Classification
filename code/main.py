@@ -228,7 +228,7 @@ if __name__ == "__main__":
     # Hugging Face 업로드 설정 확인 없어도 오류안뜨도록 .get형태로 불러옴
     hf_config = CFG.get("huggingface", {})
     hf_token = hf_config.get("token")
-    hf_organization = hf_config.get("organization")
+    hf_organization = "paper-company"
     hf_repo_id = hf_config.get("repo_id")
 
     if DEBUG_MODE:
@@ -272,7 +272,7 @@ if __name__ == "__main__":
 
     evaluating(trained_model, tokenizer, test_path, output_dir)
 
-    if not (hf_token and hf_organization and hf_repo_id):
+    if not (hf_token or hf_repo_id):
         print("Hugging Face 설정이 누락되었습니다. 모델 업로드가 실행되지 않습니다.")
     else:
         # 모델 업로드
