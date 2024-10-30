@@ -62,7 +62,7 @@ def show(df):
 
     fig, ax = plt.subplots()
     ax.bar(categories, values, color=colors)
-    ax.set_xlabel("Noise : ")
+    ax.set_xlabel("Noise")
     ax.set_ylabel("Frequency")
     st.pyplot(fig)
 
@@ -115,4 +115,5 @@ def show(df):
     ax.set_xlabel("Target")
     ax.set_ylabel("Frequency")
     ax.legend(title="Noise Category")
+    plt.xticks(rotation=0)
     st.pyplot(fig)
