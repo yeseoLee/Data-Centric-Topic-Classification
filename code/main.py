@@ -8,10 +8,10 @@ import argparse
 
 import torch
 from torch.utils.data import Dataset
-from huggingface_hub import HfApi, Repository, create_repo
 
 import wandb
-import re
+from dotenv import load_dotenv
+from datasets import load_dataset
 
 import evaluate
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -177,9 +177,8 @@ def config_print(config, depth=0):
             print(*prefix)
 
 
-def wandb_name(train_path, train_lr, train_batch_size, test_size, wandb_user_name):
-    match = re.search(r"([^/]+)\.csv$", train_path)
-    data_name = match.group(1) if match else "unknown"
+def wandb_name(train_file_name, train_lr, train_batch_size, test_size, wandb_user_name):
+    data_name = train_file_name
     lr = train_lr
     bs = train_batch_size
     ts = test_size
@@ -195,14 +194,63 @@ def upload_to_huggingface(model, tokenizer, hf_token, hf_organization, hf_repo_i
         tokenizer.push_to_hub(
             repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
         )
+        print(f"your model pushed successfully in {hf_repo_id}, hugging face")
     except Exception as e:
         print(f"An error occurred while uploading to Hugging Face: {e}")
+
+
+def load_env_file(filepath=".env"):
+    try:
+        # .env 파일 로드 시도
+        if load_dotenv(filepath):
+            print(f".env 파일을 성공적으로 로드했습니다: {filepath}")
+        else:
+            raise FileNotFoundError  # 파일이 없으면 예외 발생
+    except FileNotFoundError:
+        print(f"경고: 지정된 .env 파일을 찾을 수 없습니다: {filepath}")
+    except Exception as e:
+        print(f"오류 발생: .env 파일 로드 중 예외가 발생했습니다: {e}")
+
+
+def check_dataset(hf_organization, hf_token, train_file_name):
+    """
+    로컬에 데이터셋 폴더가 없으면 Hugging Face에서 데이터를 다운로드하여 로컬에 CSV로 저장하는 함수.
+    데이터셋을 로컬에 저장만 하고 반환값은 없습니다.
+
+    Parameters:
+    - hf_organization (str): Hugging Face Organization 이름
+    - hf_token (str): Hugging Face 토큰
+    - train_file_name (str): 로컬에 저장할 train file 이름
+    - dataset_repo_id (str): Hugging Face에 저장된 데이터셋 리포지토리 ID (기본값: "datacentric-orginal")
+    """
+    # Define the folder path and file paths
+    folder_path = os.path.join("..", "data")
+    train_path = os.path.join(folder_path, "train.csv")
+
+    # Check if local data folder exists
+    if not os.path.exists(train_path):
+        print(
+            f"로컬에 '{train_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다."
+        )
+
+        # Load dataset from Hugging Face if local folder is missing
+        full_repo_id = f"{hf_organization}/datacentric-{train_file_name}"
+        dataset = load_dataset(full_repo_id, split="train", token=hf_token)
+
+        # 데이터셋을 CSV로 저장
+        dataset.to_pandas().to_csv(train_path, index=False)
+        print(f"데이터셋이 '{train_path}'에 다운로드되었습니다.")
+    else:
+        print(f"로컬파일을 로드합니다.")
 
 
 if __name__ == "__main__":
     parser = get_parser()
     with open(os.path.join("../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
+
+    # 허깅페이스 API키 관리
+    load_env_file("../setup/.env")
 
     # config의 파라미터를 불러와 변수에 저장함.
     # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
@@ -211,8 +259,7 @@ if __name__ == "__main__":
     # default는 False, Debug 동작설정
     DEBUG_MODE = CFG.get("DEBUG", False)
 
-    train_path = CFG["data"]["train_path"]
-    test_path = CFG["data"]["test_path"]
+    train_file_name = CFG["data"]["train_name"]
     output_dir = CFG["data"]["output_dir"]
     test_size = CFG["data"]["test_size"]
     max_length = CFG["data"]["max_length"]
@@ -227,18 +274,25 @@ if __name__ == "__main__":
 
     # Hugging Face 업로드 설정 확인 없어도 오류안뜨도록 .get형태로 불러옴
     hf_config = CFG.get("huggingface", {})
-    hf_token = hf_config.get("token")
-    hf_organization = hf_config.get("organization")
-    hf_repo_id = hf_config.get("repo_id")
+    hf_token = os.getenv("HUGGINGFACE_TOKEN")
+    hf_organization = "paper-company"
+    hf_model_repo_id = hf_config.get("model_repo_id")
 
     if DEBUG_MODE:
         print("Debug mode is ON. Displaying config parameters:")
         config_print(CFG)
 
+    # 로컬에 있는지 체크, 다운로드
+    check_dataset(hf_organization, hf_token, train_file_name)
+
+    # link data
+    train_path = os.path.join("..", "data", f"{train_file_name}.csv")
+    test_path = os.path.join("..", "data", "test.csv")
+
     wandb.init(
         project=wandb_project,
         name=wandb_name(
-            train_path, learning_rate, train_batch_size, test_size, wandb_user_name
+            train_file_name, learning_rate, train_batch_size, test_size, wandb_user_name
         ),
     )
 
@@ -272,7 +326,7 @@ if __name__ == "__main__":
 
     evaluating(trained_model, tokenizer, test_path, output_dir)
 
-    if not (hf_token and hf_organization and hf_repo_id):
+    if not (hf_token or hf_model_repo_id):
         print("Hugging Face 설정이 누락되었습니다. 모델 업로드가 실행되지 않습니다.")
     else:
         # 모델 업로드
@@ -281,7 +335,7 @@ if __name__ == "__main__":
             tokenizer,
             hf_token,
             hf_organization,
-            f"{hf_repo_id}_{wandb_user_name}",
+            f"{hf_model_repo_id}_{wandb_user_name}",
         )
 
     wandb.finish()

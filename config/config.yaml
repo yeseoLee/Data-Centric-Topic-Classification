@@ -1,7 +1,6 @@
 SEED: 456
 data:
-  train_path: ../data/train.csv
-  test_path: ../data/test.csv
+  train_name: train
   output_dir: ../output
   test_size: 0.3
   max_length: 30
@@ -12,9 +11,6 @@ train:
 wandb:
   project: Data Centric
   entity: minseo
-# 커밋시 절대 토큰을 추가하지 말 것. 향후 .env 파일로 분리하는 등 보안 개선 예정
 huggingface:
-  token:
-  organization: paper-company
-  repo_id: bert-base-pretrained
+  model_repo_id: bert-base-pretrained
 DEBUG : True

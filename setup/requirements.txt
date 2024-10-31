@@ -13,5 +13,7 @@ pyyaml
 tqdm
 wandb
 huggingface_hub
+python-dotenv
 
 pre-commit
+
