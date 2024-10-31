@@ -5,21 +5,20 @@ from dotenv import load_dotenv
 from main import load_env_file
 
 
-def upload_dataset_folder_to_hub(foler_name, token, private=True):
+def upload_train_file_to_hub(file_name, token, private=True):
     """
     폴더 내 데이터 파일들을 Hugging Face Hub에 데이터셋으로 업로드하는 함수.
 
     Parameters:
-    - repo_id (str): Hugging Face의 'Organization/Repository' 형식의 데이터셋 이름
+    - file_name (str): 업로드할 로컬 데이터 파일 이름
     - token (str): Hugging Face 액세스 토큰. 쓰기 권한 필요
-    - folder_name (str): 업로드할 로컬 데이터 폴더 이름
     - private (bool): True면 비공개, False면 공개 설정
 
     Returns:
     - None
     """
     api = HfApi()
-    repo_id = f"paper-company/datacentric-{foler_name}"
+    repo_id = f"paper-company/datacentric-{file_name}"
 
     # 리포지토리 존재 여부 확인
     try:
@@ -36,22 +35,14 @@ def upload_dataset_folder_to_hub(foler_name, token, private=True):
             repo_id=repo_id, repo_type="dataset", private=private, token=token
         )
 
-    # 폴더 내 데이터 파일 경로 설정
-    folder_path = os.path.join("..", "data", foler_name)
-    data_files = {}
-
-    # train/test 파일을 각각 데이터셋의 분할로 지정
-    if os.path.exists(os.path.join(folder_path, "train.csv")):
-        data_files["train"] = os.path.join(folder_path, "train.csv")
-    if os.path.exists(os.path.join(folder_path, "test.csv")):
-        data_files["test"] = os.path.join(folder_path, "test.csv")
-
-    if not data_files:
-        print(f"폴더 '{folder_path}'에 업로드할 유효한 데이터 파일이 없습니다.")
+    # 파일 경로 설정
+    file_path = os.path.join("..", "data", f"{file_name}.csv")
+    if not os.path.exists(file_path):
+        print(f"파일 '{file_path}'이 존재하지 않습니다.")
         return
 
     # 데이터셋 로드 및 업로드
-    dataset = load_dataset("csv", data_files=data_files)
+    dataset = load_dataset("csv", data_files={"train": file_path})
     dataset.push_to_hub(repo_id, token=token)
     print(f"데이터셋이 '{repo_id}'에 업로드되었습니다.")
 
@@ -61,10 +52,9 @@ if "__main__" == __name__:
     load_env_file("../setup/.env")
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
 
-    # folder name 입력
-    # origin 입력시 paper-company/datacentric-origin 형태로 저장
+    # 업로드할 파일명 지정
     #########################################
-    folder_name = "origin"
+    file_name = "train"
     #########################################
 
-    upload_dataset_folder_to_hub(folder_name, hf_token, private=True)
+    upload_train_file_to_hub(file_name, hf_token, private=True)
