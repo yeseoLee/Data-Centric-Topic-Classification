@@ -216,7 +216,7 @@ def load_env_file(filepath=".env"):
 
 
 def check_dataset(
-    hf_organization, hf_token, data_folder_name, dataset_repo_id="origin"
+    hf_organization, hf_token, train_file_name
 ):
     """
     로컬에 데이터셋 폴더가 없으면 Hugging Face에서 데이터를 다운로드하여 로컬에 CSV로 저장하는 함수.
@@ -225,32 +225,26 @@ def check_dataset(
     Parameters:
     - hf_organization (str): Hugging Face Organization 이름
     - hf_token (str): Hugging Face 토큰
-    - data_folder_name (str): 로컬에 저장할 데이터 폴더 이름
+    - train_file_name (str): 로컬에 저장할 train file 이름
     - dataset_repo_id (str): Hugging Face에 저장된 데이터셋 리포지토리 ID (기본값: "datacentric-orginal")
     """
     # Define the folder path and file paths
-    folder_path = os.path.join("..", "data", data_folder_name)
+    folder_path = os.path.join("..", "data")
     train_path = os.path.join(folder_path, "train.csv")
-    test_path = os.path.join(folder_path, "test.csv")
 
     # Check if local data folder exists
-    if not os.path.exists(folder_path):
+    if not os.path.exists(train_path):
         print(
-            f"로컬에 '{folder_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다."
+            f"로컬에 '{train_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다."
         )
 
         # Load dataset from Hugging Face if local folder is missing
-        full_repo_id = f"{hf_organization}/datacentric-{dataset_repo_id}"
-        dataset = load_dataset(full_repo_id, token=hf_token)
+        full_repo_id = f"{hf_organization}/datacentric-{train_file_name}"
+        dataset = load_dataset(full_repo_id, split="train", token=hf_token)
 
-        # Create local data folder
-        os.makedirs(folder_path, exist_ok=True)
-
-        # Save dataset to CSV
-        dataset["train"].to_csv(train_path, index=False)
-        dataset["test"].to_csv(test_path, index=False)
-        print(f"데이터셋이 '{folder_path}'에 다운로드 되었습니다..")
-
+        # 데이터셋을 CSV로 저장
+        dataset.to_pandas().to_csv(train_path, index=False)
+        print(f"데이터셋이 '{train_path}'에 다운로드되었습니다.")
     else:
         print(f"로컬파일을 로드합니다.")
 
@@ -270,7 +264,7 @@ if __name__ == "__main__":
     # default는 False, Debug 동작설정
     DEBUG_MODE = CFG.get("DEBUG", False)
 
-    data_folder_name = CFG["data"]["folder_name"]
+    train_file_name = CFG["data"]["train_name"]
     output_dir = CFG["data"]["output_dir"]
     test_size = CFG["data"]["test_size"]
     max_length = CFG["data"]["max_length"]
@@ -294,11 +288,11 @@ if __name__ == "__main__":
         config_print(CFG)
 
     # 로컬에 있는지 체크, 다운로드
-    check_dataset(hf_organization, hf_token, data_folder_name, dataset_repo_id="origin")
+    check_dataset(hf_organization, hf_token, train_file_name)
 
     # link data
-    train_path = os.path.join("..", "data", data_folder_name, "train.csv")
-    test_path = os.path.join("..", "data", data_folder_name, "test.csv")
+    train_path = os.path.join("..", "data", f"{train_file_name}.csv")
+    test_path = os.path.join("..", "data", "test.csv")
 
     wandb.init(
         project=wandb_project,
