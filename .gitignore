@@ -20,3 +20,4 @@ tmp/
 data/
 output/
 **/wandb/
+config/config.yaml
