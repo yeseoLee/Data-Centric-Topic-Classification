@@ -1,8 +1,9 @@
 import os
+import yaml
 from huggingface_hub import HfApi
 from datasets import load_dataset
 from dotenv import load_dotenv
-from main import load_env_file
+from main import load_env_file, get_parser
 
 
 def upload_train_file_to_hub(file_name, token, private=True):
@@ -48,13 +49,15 @@ def upload_train_file_to_hub(file_name, token, private=True):
 
 
 if "__main__" == __name__:
+    parser = get_parser()
+    with open(os.path.join("../config", parser.config)) as f:
+        CFG = yaml.safe_load(f)
+
     # 허깅페이스 API키 관리
     load_env_file("../setup/.env")
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
 
     # 업로드할 파일명 지정
-    #########################################
-    file_name = "train"
-    #########################################
+    file_name = CFG["data"]["train_name"]
 
     upload_train_file_to_hub(file_name, hf_token, private=True)
