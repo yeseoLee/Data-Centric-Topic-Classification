@@ -179,9 +179,8 @@ def config_print(config, depth=0):
             print(*prefix)
 
 
-def wandb_name(train_path, train_lr, train_batch_size, test_size, wandb_user_name):
-    match = re.search(r"([^/]+)\.csv$", train_path)
-    data_name = match.group(1) if match else "unknown"
+def wandb_name(train_file_name, train_lr, train_batch_size, test_size, wandb_user_name):
+    data_name = train_file_name
     lr = train_lr
     bs = train_batch_size
     ts = test_size
@@ -295,7 +294,7 @@ if __name__ == "__main__":
     wandb.init(
         project=wandb_project,
         name=wandb_name(
-            train_path, learning_rate, train_batch_size, test_size, wandb_user_name
+            train_file_name, learning_rate, train_batch_size, test_size, wandb_user_name
         ),
     )
 
