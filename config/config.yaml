@@ -8,9 +8,12 @@ train:
   train_batch_size: 32
   eval_batch_size: 32
   lr: 2e-05
+exp:
+  # 실험자 [sujin, seongmin, sungjae, gayeon, yeseo, minseo]
+  username: pubao
 wandb:
   project: Data Centric
-  entity: minseo
+  entity: hidong1015-nlp04
 huggingface:
   model_repo_id: bert-base-pretrained
 DEBUG : True
