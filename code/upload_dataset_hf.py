@@ -2,7 +2,6 @@ import os
 import yaml
 from huggingface_hub import HfApi
 from datasets import load_dataset
-from dotenv import load_dotenv
 from main import load_env_file, get_parser
 
 
