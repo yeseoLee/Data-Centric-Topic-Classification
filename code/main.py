@@ -177,12 +177,12 @@ def config_print(config, depth=0):
             print(*prefix)
 
 
-def wandb_name(train_file_name, train_lr, train_batch_size, test_size, wandb_user_name):
+def wandb_name(train_file_name, train_lr, train_batch_size, test_size, user_name):
     data_name = train_file_name
     lr = train_lr
     bs = train_batch_size
     ts = test_size
-    user_name = wandb_user_name
+    user_name = user_name
     return f"{user_name}_{data_name}_{lr}_{bs}_{ts}"
 
 
@@ -269,8 +269,10 @@ if __name__ == "__main__":
     eval_batch_size = CFG["train"]["eval_batch_size"]
     learning_rate = CFG["train"]["lr"]
 
+    user_name = CFG["exp"]["username"]
+
     wandb_project = CFG["wandb"]["project"]
-    wandb_user_name = CFG["wandb"]["entity"]
+    wandb_entity = CFG["wandb"]["entity"]
 
     # Hugging Face 업로드 설정 확인 없어도 오류안뜨도록 .get형태로 불러옴
     hf_config = CFG.get("huggingface", {})
@@ -291,8 +293,9 @@ if __name__ == "__main__":
 
     wandb.init(
         project=wandb_project,
+        entity=wandb_entity,
         name=wandb_name(
-            train_file_name, learning_rate, train_batch_size, test_size, wandb_user_name
+            train_file_name, learning_rate, train_batch_size, test_size, user_name
         ),
     )
 
@@ -335,7 +338,7 @@ if __name__ == "__main__":
             tokenizer,
             hf_token,
             hf_organization,
-            f"{hf_model_repo_id}_{wandb_user_name}",
+            f"{hf_model_repo_id}_{user_name}",
         )
 
     wandb.finish()
