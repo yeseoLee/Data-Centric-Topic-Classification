@@ -215,9 +215,7 @@ def load_env_file(filepath=".env"):
         print(f"오류 발생: .env 파일 로드 중 예외가 발생했습니다: {e}")
 
 
-def check_dataset(
-    hf_organization, hf_token, train_file_name
-):
+def check_dataset(hf_organization, hf_token, train_file_name):
     """
     로컬에 데이터셋 폴더가 없으면 Hugging Face에서 데이터를 다운로드하여 로컬에 CSV로 저장하는 함수.
     데이터셋을 로컬에 저장만 하고 반환값은 없습니다.
