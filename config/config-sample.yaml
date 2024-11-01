@@ -1,6 +1,7 @@
 SEED: 456
 data:
   train_name: train
+  test_name: test
   output_dir: ../output
   test_size: 0.3
   max_length: 30
@@ -11,9 +12,12 @@ train:
 exp:
   # 실험자 [sujin, seongmin, sungjae, gayeon, yeseo, minseo]
   username: pubao
+gdrive:
+  upload: True
+  token: ../config/token.json
+  credentials: ../config/credentials.json
+  folder_id: 
 wandb:
   project: Data Centric
   entity: hidong1015-nlp04
-huggingface:
-  model_repo_id: bert-base-pretrained
 DEBUG : True

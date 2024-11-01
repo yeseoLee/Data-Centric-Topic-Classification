@@ -1,24 +1,19 @@
 import os
-import yaml
-import random
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-import argparse
-
 import torch
-from torch.utils.data import Dataset
-
 import wandb
-from dotenv import load_dotenv
-from datasets import load_dataset
+import yaml
 
-import evaluate
+from tabulate import tabulate
+from torch.utils.data import Dataset
+from tqdm import tqdm
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers import DataCollatorWithPadding
 from transformers import TrainingArguments, Trainer
-
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
+from utils import *
 
 
 class BERTDataset(Dataset):
@@ -49,24 +44,6 @@ class BERTDataset(Dataset):
         return len(self.labels)
 
 
-# seed 고정
-def seed_fix(SEED=456):
-    random.seed(SEED)
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    torch.cuda.manual_seed(SEED)
-    torch.cuda.manual_seed_all(SEED)
-
-
-# config parser로 가져오기
-def get_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", type=str, default="config.yaml"
-    )  # 입력 없을 시, 기본값으로 config.yaml을 가져옴
-    return parser.parse_args()
-
-
 def data_setting(test_size, max_length, SEED, train_path, tokenizer):
     data = pd.read_csv(train_path)
     dataset_train, dataset_valid = train_test_split(
@@ -84,10 +61,45 @@ def data_setting(test_size, max_length, SEED, train_path, tokenizer):
 
 
 def compute_metrics(eval_pred):
-    f1 = evaluate.load("f1")
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
-    return f1.compute(predictions=predictions, references=labels, average="macro")
+
+    return {
+        "accuracy": accuracy_score(labels, predictions),
+        "f1": f1_score(labels, predictions, average="macro"),
+    }
+
+
+def compute_metrics_detailed(eval_pred):
+    predictions, labels = eval_pred
+    predictions = np.argmax(predictions, axis=1)
+
+    # 전체 메트릭
+    accuracy = accuracy_score(labels, predictions)
+    f1_macro = f1_score(labels, predictions, average="macro")
+
+    # 클래스별 메트릭
+    f1_per_class = f1_score(labels, predictions, average=None)
+    class_accuracies = {}
+    unique_labels = np.unique(labels)
+    for label in unique_labels:
+        mask = labels == label
+        class_accuracies[f"accuracy_class_{label}"] = accuracy_score(
+            labels[mask], predictions[mask]
+        )
+
+    # 전체 메트릭
+    results = {
+        "accuracy": accuracy,
+        "f1": f1_macro,
+    }
+
+    # 클래스별 메트릭 추가
+    for i, label in enumerate(unique_labels):
+        results[f"f1_class_{label}"] = f1_per_class[i]
+    results.update(class_accuracies)
+
+    return results
 
 
 # 학습
@@ -101,6 +113,7 @@ def train(
     data_train,
     data_valid,
     data_collator,
+    exp_name,
 ):
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -128,6 +141,8 @@ def train(
         metric_for_best_model="eval_f1",
         greater_is_better=True,
         seed=SEED,
+        run_name=exp_name,
+        report_to="wandb",
     )
 
     trainer = Trainer(
@@ -141,20 +156,38 @@ def train(
 
     trainer.train()
 
+    # 테이블 형식으로 detail evaluation 출력
+    trainer.compute_metrics = compute_metrics_detailed
+    final_metrics = trainer.evaluate()
+    metrics_table = [
+        [metric, f"{value:.4f}"]
+        for metric, value in final_metrics.items()
+        if isinstance(value, float)
+    ]
+    print("\n" + tabulate(metrics_table, headers=["Metric", "Value"], tablefmt="grid"))
+
     return model
 
 
 # 평가
-def evaluating(model, tokenizer, test_path, output_dir):
+def evaluating(model, tokenizer, eval_batch_size, test_path, output_dir):
     model.eval()
     preds = []
 
     dataset_test = pd.read_csv(test_path)
 
-    for idx, sample in tqdm(
-        dataset_test.iterrows(), total=len(dataset_test), desc="Evaluating"
-    ):
-        inputs = tokenizer(sample["text"], return_tensors="pt").to(DEVICE)
+    # 배치 단위로 처리
+    for i in tqdm(range(0, len(dataset_test), eval_batch_size), desc="Evaluating"):
+        # 배치 데이터 추출
+        batch_samples = dataset_test.iloc[i : i + eval_batch_size]
+        texts = batch_samples["text"].tolist()
+
+        # 배치 단위로 토크나이징
+        inputs = tokenizer(
+            texts, return_tensors="pt", padding=True, truncation=True
+        ).to(DEVICE)
+
+        # 예측
         with torch.no_grad():
             logits = model(**inputs).logits
             pred = torch.argmax(torch.nn.Softmax(dim=1)(logits), dim=1).cpu().numpy()
@@ -162,86 +195,7 @@ def evaluating(model, tokenizer, test_path, output_dir):
 
     dataset_test["target"] = preds
     dataset_test.to_csv(os.path.join(output_dir, "output.csv"), index=False)
-
-
-# config 확인 (print)
-def config_print(config, depth=0):
-    for k, v in config.items():
-        prefix = ["\t" * depth, k, ":"]
-
-        if type(v) == dict:
-            print(*prefix)
-            config_print(v, depth + 1)
-        else:
-            prefix.append(v)
-            print(*prefix)
-
-
-def wandb_name(train_file_name, train_lr, train_batch_size, test_size, user_name):
-    data_name = train_file_name
-    lr = train_lr
-    bs = train_batch_size
-    ts = test_size
-    user_name = user_name
-    return f"{user_name}_{data_name}_{lr}_{bs}_{ts}"
-
-
-def upload_to_huggingface(model, tokenizer, hf_token, hf_organization, hf_repo_id):
-    try:
-        model.push_to_hub(
-            repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
-        )
-        tokenizer.push_to_hub(
-            repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
-        )
-        print(f"your model pushed successfully in {hf_repo_id}, hugging face")
-    except Exception as e:
-        print(f"An error occurred while uploading to Hugging Face: {e}")
-
-
-def load_env_file(filepath=".env"):
-    try:
-        # .env 파일 로드 시도
-        if load_dotenv(filepath):
-            print(f".env 파일을 성공적으로 로드했습니다: {filepath}")
-        else:
-            raise FileNotFoundError  # 파일이 없으면 예외 발생
-    except FileNotFoundError:
-        print(f"경고: 지정된 .env 파일을 찾을 수 없습니다: {filepath}")
-    except Exception as e:
-        print(f"오류 발생: .env 파일 로드 중 예외가 발생했습니다: {e}")
-
-
-def check_dataset(hf_organization, hf_token, train_file_name):
-    """
-    로컬에 데이터셋 폴더가 없으면 Hugging Face에서 데이터를 다운로드하여 로컬에 CSV로 저장하는 함수.
-    데이터셋을 로컬에 저장만 하고 반환값은 없습니다.
-
-    Parameters:
-    - hf_organization (str): Hugging Face Organization 이름
-    - hf_token (str): Hugging Face 토큰
-    - train_file_name (str): 로컬에 저장할 train file 이름
-    - dataset_repo_id (str): Hugging Face에 저장된 데이터셋 리포지토리 ID (기본값: "datacentric-orginal")
-    """
-    # Define the folder path and file paths
-    folder_path = os.path.join("..", "data")
-    train_path = os.path.join(folder_path, "train.csv")
-
-    # Check if local data folder exists
-    if not os.path.exists(train_path):
-        print(
-            f"로컬에 '{train_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다."
-        )
-
-        # Load dataset from Hugging Face if local folder is missing
-        full_repo_id = f"{hf_organization}/datacentric-{train_file_name}"
-        dataset = load_dataset(full_repo_id, split="train", token=hf_token)
-
-        # 데이터셋을 CSV로 저장
-        dataset.to_pandas().to_csv(train_path, index=False)
-        print(f"데이터셋이 '{train_path}'에 다운로드되었습니다.")
-    else:
-        print(f"로컬파일을 로드합니다.")
+    return dataset_test
 
 
 if __name__ == "__main__":
@@ -249,17 +203,15 @@ if __name__ == "__main__":
     with open(os.path.join("../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
 
-    # 허깅페이스 API키 관리
-    load_env_file("../setup/.env")
-
     # config의 파라미터를 불러와 변수에 저장함.
     # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
     SEED = CFG["SEED"]
 
     # default는 False, Debug 동작설정
-    DEBUG_MODE = CFG.get("DEBUG", False)
+    set_debug_mode(CFG.get("DEBUG", False))
 
     train_file_name = CFG["data"]["train_name"]
+    test_file_name = CFG["data"]["test_name"]
     output_dir = CFG["data"]["output_dir"]
     test_size = CFG["data"]["test_size"]
     max_length = CFG["data"]["max_length"]
@@ -270,40 +222,39 @@ if __name__ == "__main__":
     learning_rate = CFG["train"]["lr"]
 
     user_name = CFG["exp"]["username"]
+    upload_gdrive = CFG["gdrive"]["upload"]
 
+    # wandb 설정
     wandb_project = CFG["wandb"]["project"]
     wandb_entity = CFG["wandb"]["entity"]
 
-    # Hugging Face 업로드 설정 확인 없어도 오류안뜨도록 .get형태로 불러옴
+    exp_name = wandb_name(
+        train_file_name, learning_rate, train_batch_size, test_size, user_name
+    )
+    wandb.init(
+        project=wandb_project,
+        entity=wandb_entity,
+        name=exp_name,
+    )
+
+    # HuggingFace API키 및 설정
+    load_env_file("../setup/.env")
     hf_config = CFG.get("huggingface", {})
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
     hf_organization = "paper-company"
-    hf_model_repo_id = hf_config.get("model_repo_id")
 
-    if DEBUG_MODE:
-        print("Debug mode is ON. Displaying config parameters:")
-        config_print(CFG)
+    config_print(CFG)
 
     # 로컬에 있는지 체크, 다운로드
     check_dataset(hf_organization, hf_token, train_file_name)
 
     # link data
     train_path = os.path.join("..", "data", f"{train_file_name}.csv")
-    test_path = os.path.join("..", "data", "test.csv")
-
-    wandb.init(
-        project=wandb_project,
-        entity=wandb_entity,
-        name=wandb_name(
-            train_file_name, learning_rate, train_batch_size, test_size, user_name
-        ),
-    )
+    test_path = os.path.join("..", "data", f"{test_file_name}.csv")
 
     seed_fix(SEED)
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    if DEBUG_MODE:
-        print(f"DEVICE : {DEVICE}")
 
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -325,20 +276,22 @@ if __name__ == "__main__":
         data_train,
         data_valid,
         data_collator,
+        exp_name,
     )
 
-    evaluating(trained_model, tokenizer, test_path, output_dir)
+    dataset_test = evaluating(
+        trained_model, tokenizer, eval_batch_size, test_path, output_dir
+    )
 
-    if not (hf_token or hf_model_repo_id):
-        print("Hugging Face 설정이 누락되었습니다. 모델 업로드가 실행되지 않습니다.")
-    else:
-        # 모델 업로드
-        upload_to_huggingface(
-            trained_model,
-            tokenizer,
-            hf_token,
-            hf_organization,
-            f"{hf_model_repo_id}_{user_name}",
+    # upload output & report to gdrive
+    if upload_gdrive:
+        json_report = make_json_report(dataset_test)
+        upload_report(
+            dataset_name=train_file_name,
+            user_name=user_name,
+            exp_name=exp_name,
+            result_df=dataset_test,
+            result_json=json_report,
         )
 
     wandb.finish()
