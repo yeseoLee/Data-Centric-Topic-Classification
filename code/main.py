@@ -170,16 +170,24 @@ def train(
 
 
 # 평가
-def evaluating(model, tokenizer, test_path, output_dir):
+def evaluating(model, tokenizer, eval_batch_size, test_path, output_dir):
     model.eval()
     preds = []
 
     dataset_test = pd.read_csv(test_path)
 
-    for idx, sample in tqdm(
-        dataset_test.iterrows(), total=len(dataset_test), desc="Evaluating"
-    ):
-        inputs = tokenizer(sample["text"], return_tensors="pt").to(DEVICE)
+    # 배치 단위로 처리
+    for i in tqdm(range(0, len(dataset_test), eval_batch_size), desc="Evaluating"):
+        # 배치 데이터 추출
+        batch_samples = dataset_test.iloc[i : i + eval_batch_size]
+        texts = batch_samples["text"].tolist()
+
+        # 배치 단위로 토크나이징
+        inputs = tokenizer(
+            texts, return_tensors="pt", padding=True, truncation=True
+        ).to(DEVICE)
+
+        # 예측
         with torch.no_grad():
             logits = model(**inputs).logits
             pred = torch.argmax(torch.nn.Softmax(dim=1)(logits), dim=1).cpu().numpy()
