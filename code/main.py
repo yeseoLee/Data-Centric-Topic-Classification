@@ -237,19 +237,6 @@ def wandb_name(train_file_name, train_lr, train_batch_size, test_size, user_name
     return f"{user_name}_{data_name}_{lr}_{bs}_{ts}"
 
 
-def upload_to_huggingface(model, tokenizer, hf_token, hf_organization, hf_repo_id):
-    try:
-        model.push_to_hub(
-            repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
-        )
-        tokenizer.push_to_hub(
-            repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
-        )
-        print(f"your model pushed successfully in {hf_repo_id}, hugging face")
-    except Exception as e:
-        print(f"An error occurred while uploading to Hugging Face: {e}")
-
-
 def load_env_file(filepath=".env"):
     try:
         # .env 파일 로드 시도
@@ -340,7 +327,6 @@ if __name__ == "__main__":
     hf_config = CFG.get("huggingface", {})
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
     hf_organization = "paper-company"
-    hf_model_repo_id = hf_config.get("model_repo_id")
 
     config_print(CFG)
 
@@ -380,17 +366,5 @@ if __name__ == "__main__":
     )
 
     evaluating(trained_model, tokenizer, test_path, output_dir)
-
-    if not (hf_token or hf_model_repo_id):
-        print("Hugging Face 설정이 누락되었습니다. 모델 업로드가 실행되지 않습니다.")
-    else:
-        # 모델 업로드
-        upload_to_huggingface(
-            trained_model,
-            tokenizer,
-            hf_token,
-            hf_organization,
-            f"{hf_model_repo_id}_{user_name}",
-        )
 
     wandb.finish()
