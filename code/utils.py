@@ -4,6 +4,7 @@ import argparse
 import torch
 import random
 import time
+import json
 
 from dotenv import load_dotenv
 from datasets import load_dataset
@@ -124,31 +125,68 @@ def get_timestamp():
 def make_json_report(df):
     json_report = {}
 
-    def _generate_text_statistics():
-        """텍스트 데이터 통계 생성"""
-        text_stats = {
-            "avg_length": df["text"].str.len().mean(),
-            "max_length": df["text"].str.len().max(),
-            "min_length": df["text"].str.len().min(),
-            "total_words": sum(df["text"].str.split().str.len()),
-            "avg_words": df["text"].str.split().str.len().mean(),
-        }
-        json_report["text_statistics"] = text_stats
+    # 가정: 전체 데이터셋의 클래스별 샘플 수는 균등 할 것
+    # public 분포와 가정을 통한 private 분포 추정
+    total_per_class = 30000 // 7
+    public_percentages = [0.1719, 0.1367, 0.1018, 0.1627, 0.1469, 0.1499, 0.1301]
+    public_samples = 15000
 
-    def _generate_target_distribution():
-        """타겟 레이블 분포 분석"""
-        target_counts = df["target"].value_counts().to_dict()
-        json_report["target_distribution"] = {
-            "class_distribution": target_counts,
-            "num_classes": len(target_counts),
-            "class_balance": {
-                str(label): count / len(df) for label, count in target_counts.items()
-            },
-        }
+    # Public 데이터셋의 클래스별 샘플 수
+    public_distribution = {
+        "class_distribution": {
+            str(i): int(p * public_samples) for i, p in enumerate(public_percentages)
+        },
+        "num_classes": 7,
+        "class_balance": {
+            str(i): round(p, 4) for i, p in enumerate(public_percentages)
+        },
+    }
 
-    _generate_text_statistics()
-    _generate_target_distribution()
-    return json_report
+    # Private 데이터셋의 클래스별 샘플 수
+    private_distribution = {
+        "class_distribution": {
+            str(i): total_per_class - public_distribution["class_distribution"][str(i)]
+            for i in range(7)
+        },
+        "num_classes": 7,
+        "class_balance": {
+            str(i): round(
+                (total_per_class - public_distribution["class_distribution"][str(i)])
+                / 15000,
+                4,
+            )
+            for i in range(7)
+        },
+    }
+
+    # 현재 데이터의 타겟 레이블 분포 분석
+    target_counts = df["target"].value_counts().to_dict()
+    sorted_target_counts = dict(sorted(target_counts.items()))
+    json_report["target_distribution"] = {
+        "class_distribution": sorted_target_counts,
+        "num_classes": len(sorted_target_counts),
+        "class_balance": {
+            str(label): round(count / len(df), 4)
+            for label, count in sorted_target_counts.items()
+        },
+    }
+
+    json_report["public_distribution"] = public_distribution
+    json_report["private_distribution"] = private_distribution
+
+    # NumPy 타입을 처리하기 위한 커스텀 JSONEncoder
+    class NumpyEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return round(float(obj), 4)
+            if isinstance(obj, np.ndarray):
+                return [round(float(x), 4) for x in obj.tolist()]
+            return super().default(obj)
+
+    json_str = json.dumps(json_report, cls=NumpyEncoder, indent=4, ensure_ascii=False)
+    return json_str
 
 
 def upload_report(dataset_name, user_name, exp_name, result_df, result_json):

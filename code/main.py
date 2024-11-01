@@ -203,6 +203,7 @@ if __name__ == "__main__":
     set_debug_mode(CFG.get("DEBUG", False))
 
     train_file_name = CFG["data"]["train_name"]
+    test_file_name = CFG["data"]["test_name"]
     output_dir = CFG["data"]["output_dir"]
     test_size = CFG["data"]["test_size"]
     max_length = CFG["data"]["max_length"]
@@ -213,6 +214,7 @@ if __name__ == "__main__":
     learning_rate = CFG["train"]["lr"]
 
     user_name = CFG["exp"]["username"]
+    upload_gdrive = CFG["gdrive"]["upload"]
 
     # wandb 설정
     wandb_project = CFG["wandb"]["project"]
@@ -240,7 +242,7 @@ if __name__ == "__main__":
 
     # link data
     train_path = os.path.join("..", "data", f"{train_file_name}.csv")
-    test_path = os.path.join("..", "data", "test.csv")
+    test_path = os.path.join("..", "data", f"{test_file_name}.csv")
 
     seed_fix(SEED)
 
@@ -269,10 +271,19 @@ if __name__ == "__main__":
         exp_name,
     )
 
-    dataset_test = evaluating(trained_model, tokenizer, test_path, output_dir)
+    dataset_test = evaluating(
+        trained_model, tokenizer, eval_batch_size, test_path, output_dir
+    )
 
-    # upload config,log,output to gdrive
-    json_report = make_json_report(dataset_test)
-    upload_report(dataset_test, json_report)
+    # upload output & report to gdrive
+    if upload_gdrive:
+        json_report = make_json_report(dataset_test)
+        upload_report(
+            dataset_name=train_file_name,
+            user_name=user_name,
+            exp_name=exp_name,
+            result_df=dataset_test,
+            result_json=json_report,
+        )
 
     wandb.finish()

@@ -6,14 +6,18 @@ from googleapiclient.http import MediaIoBaseUpload, MediaFileUpload, MediaIoBase
 import os.path
 import io
 import yaml
-from utils import get_parser
+import argparse
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive",
 ]
 
-parser = get_parser()
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--config", type=str, default="config.yaml"
+)  # 입력 없을 시, 기본값으로 config.yaml을 가져옴
+parser = parser.parse_args()
 with open(os.path.join("../config", parser.config)) as f:
     CFG = yaml.safe_load(f)
 TOKEN = CFG["gdrive"]["token"]
@@ -78,29 +82,6 @@ class GoogleDriveManager:
             print(f"폴더 검색 중 오류 발생: {str(e)}")
             return None
 
-        """파일 업로드"""
-        try:
-            file_metadata = {"name": os.path.basename(file_path)}
-            if not folder_id:
-                folder_id = self.root_folder_id
-            file_metadata["parents"] = [folder_id]
-
-            media = MediaFileUpload(file_path, resumable=True)
-
-            file = (
-                self.service.files()
-                .create(body=file_metadata, media_body=media, fields="id, name")
-                .execute()
-            )
-
-            print(
-                f"File uploaded successfully: {file.get('name')} (ID: {file.get('id')})"
-            )
-            return file
-        except Exception as e:
-            print(f"Error uploading file: {str(e)}")
-            return None
-
     def upload_json_data(self, json_string, filename, folder_id=None):
         """직렬화된 JSON string 직접 업로드"""
         try:
@@ -122,10 +103,6 @@ class GoogleDriveManager:
                 self.service.files()
                 .create(body=file_metadata, media_body=media, fields="id, name")
                 .execute()
-            )
-
-            print(
-                f"JSON file uploaded successfully: {file.get('name')} (ID: {file.get('id')})"
             )
             return file
 
@@ -155,32 +132,8 @@ class GoogleDriveManager:
                 .create(body=file_metadata, media_body=media, fields="id, name")
                 .execute()
             )
-
-            print(
-                f"DataFrame uploaded successfully: {file.get('name')} (ID: {file.get('id')})"
-            )
             return file
 
         except Exception as e:
             print(f"Error uploading DataFrame: {str(e)}")
-            return None
-
-        """폴더 생성"""
-        try:
-            file_metadata = {
-                "name": folder_name,
-                "mimeType": "application/vnd.google-apps.folder",
-            }
-            if not parent_folder_id:
-                parent_folder_id = self.root_folder_id
-            file_metadata["parents"] = [parent_folder_id]
-
-            file = (
-                self.service.files().create(body=file_metadata, fields="id").execute()
-            )
-
-            print(f"Folder created successfully with ID: {file.get('id')}")
-            return file.get("id")
-        except Exception as e:
-            print(f"Error creating folder: {str(e)}")
             return None
