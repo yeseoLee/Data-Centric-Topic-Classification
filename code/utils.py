@@ -3,11 +3,14 @@ import numpy as np
 import argparse
 import torch
 import random
+import time
 
 from dotenv import load_dotenv
 from datasets import load_dataset
+from gdrive_manager import GoogleDriveManager
 
 DEBUG_MODE = False
+
 
 # seed 고정
 def seed_fix(SEED=456):
@@ -17,19 +20,22 @@ def seed_fix(SEED=456):
     torch.cuda.manual_seed(SEED)
     torch.cuda.manual_seed_all(SEED)
 
+
 def set_debug_mode(debug_mode):
     global DEBUG_MODE
     DEBUG_MODE = debug_mode
-    
+
     debug_print("DEBUG_MODE가 설정되었습니다.")
     if not DEBUG_MODE:
         import warnings
-        warnings.filterwarnings(action='ignore')
-    
+
+        warnings.filterwarnings(action="ignore")
+
 
 def debug_print(text):
     if DEBUG_MODE:
         print(text)
+
 
 # config parser로 가져오기
 def get_parser():
@@ -42,7 +48,7 @@ def get_parser():
 
 # config 확인 (print)
 def config_print(config, depth=0):
-    if depth==0:
+    if depth == 0:
         print("*" * 40)
     for k, v in config.items():
         prefix = ["\t" * depth, k, ":"]
@@ -53,7 +59,7 @@ def config_print(config, depth=0):
         else:
             prefix.append(v)
             print(*prefix)
-    if depth==0:
+    if depth == 0:
         print("*" * 40)
 
 
@@ -109,3 +115,55 @@ def check_dataset(hf_organization, hf_token, train_file_name):
         debug_print(f"데이터셋이 '{train_path}'에 다운로드되었습니다.")
     else:
         debug_print(f"로컬파일을 로드합니다.")
+
+
+def get_timestamp():
+    return round(time.time())
+
+
+def make_json_report(df):
+    json_report = {}
+
+    def _generate_text_statistics():
+        """텍스트 데이터 통계 생성"""
+        text_stats = {
+            "avg_length": df["text"].str.len().mean(),
+            "max_length": df["text"].str.len().max(),
+            "min_length": df["text"].str.len().min(),
+            "total_words": sum(df["text"].str.split().str.len()),
+            "avg_words": df["text"].str.split().str.len().mean(),
+        }
+        json_report["text_statistics"] = text_stats
+
+    def _generate_target_distribution():
+        """타겟 레이블 분포 분석"""
+        target_counts = df["target"].value_counts().to_dict()
+        json_report["target_distribution"] = {
+            "class_distribution": target_counts,
+            "num_classes": len(target_counts),
+            "class_balance": {
+                str(label): count / len(df) for label, count in target_counts.items()
+            },
+        }
+
+    _generate_text_statistics()
+    _generate_target_distribution()
+    return json_report
+
+
+def upload_report(dataset_name, user_name, exp_name, result_df, result_json):
+    timestamp = get_timestamp()
+    drive_manager = GoogleDriveManager()
+    # 데이터셋으로 폴더명을 찾고, 없다면 실험자 명으로 찾음
+    folder_id = drive_manager.find_folder_id_by_name(f"{user_name}-{dataset_name}")
+    if not folder_id:
+        folder_id = drive_manager.find_folder_id_by_name(user_name)
+    _ = drive_manager.upload_dataframe(
+        result_df, f"{exp_name}_{timestamp}_output.csv", folder_id
+    )
+    _ = drive_manager.upload_json_data(
+        result_json, f"{exp_name}_{timestamp}_report.json", folder_id
+    )
+
+    gdrive_url = f"https://drive.google.com/drive/folders/{folder_id}"
+    print(f"구글 드라이브에 업로드 되었습니다: {gdrive_url}")

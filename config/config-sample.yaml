@@ -16,4 +16,8 @@ wandb:
   entity: hidong1015-nlp04
 huggingface:
   model_repo_id: bert-base-pretrained
+gdrive:
+  token: ../config/token.json
+  credentials: ../config/credentials.json
+  folder_id: 
 DEBUG : True

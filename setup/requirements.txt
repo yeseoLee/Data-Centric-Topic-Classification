@@ -19,3 +19,8 @@ seaborn
 Jinja2
 
 pre-commit
+
+# gdrive
+google-api-python-client 
+google-auth-httplib2 
+google-auth-oauthlib 

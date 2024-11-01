@@ -63,39 +63,42 @@ def data_setting(test_size, max_length, SEED, train_path, tokenizer):
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
-    
+
     return {
-        'accuracy': accuracy_score(labels, predictions),
-        'f1': f1_score(labels, predictions, average='macro')
+        "accuracy": accuracy_score(labels, predictions),
+        "f1": f1_score(labels, predictions, average="macro"),
     }
+
 
 def compute_metrics_detailed(eval_pred):
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
-    
+
     # 전체 메트릭
     accuracy = accuracy_score(labels, predictions)
-    f1_macro = f1_score(labels, predictions, average='macro')
-    
+    f1_macro = f1_score(labels, predictions, average="macro")
+
     # 클래스별 메트릭
     f1_per_class = f1_score(labels, predictions, average=None)
     class_accuracies = {}
     unique_labels = np.unique(labels)
     for label in unique_labels:
         mask = labels == label
-        class_accuracies[f'accuracy_class_{label}'] = accuracy_score(labels[mask], predictions[mask])
-    
+        class_accuracies[f"accuracy_class_{label}"] = accuracy_score(
+            labels[mask], predictions[mask]
+        )
+
     # 전체 메트릭
     results = {
-        'accuracy': accuracy,
-        'f1': f1_macro,
+        "accuracy": accuracy,
+        "f1": f1_macro,
     }
-    
+
     # 클래스별 메트릭 추가
     for i, label in enumerate(unique_labels):
-        results[f'f1_class_{label}'] = f1_per_class[i]
+        results[f"f1_class_{label}"] = f1_per_class[i]
     results.update(class_accuracies)
-    
+
     return results
 
 
@@ -110,7 +113,7 @@ def train(
     data_train,
     data_valid,
     data_collator,
-    exp_name
+    exp_name,
 ):
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -155,10 +158,13 @@ def train(
 
     # 테이블 형식으로 detail evaluation 출력
     trainer.compute_metrics = compute_metrics_detailed
-    final_metrics = trainer.evaluate()   
-    metrics_table = [[metric, f"{value:.4f}"] for metric, value in final_metrics.items() 
-                    if isinstance(value, float)]
-    print("\n" + tabulate(metrics_table, headers=['Metric', 'Value'], tablefmt='grid'))
+    final_metrics = trainer.evaluate()
+    metrics_table = [
+        [metric, f"{value:.4f}"]
+        for metric, value in final_metrics.items()
+        if isinstance(value, float)
+    ]
+    print("\n" + tabulate(metrics_table, headers=["Metric", "Value"], tablefmt="grid"))
 
     return model
 
@@ -182,6 +188,7 @@ def evaluating(model, tokenizer, test_path, output_dir):
     dataset_test["target"] = preds
     dataset_test.to_csv(os.path.join(output_dir, "output.csv"), index=False)
     return dataset_test
+
 
 if __name__ == "__main__":
     parser = get_parser()
@@ -212,7 +219,7 @@ if __name__ == "__main__":
     wandb_entity = CFG["wandb"]["entity"]
 
     exp_name = wandb_name(
-            train_file_name, learning_rate, train_batch_size, test_size, user_name
+        train_file_name, learning_rate, train_batch_size, test_size, user_name
     )
     wandb.init(
         project=wandb_project,
@@ -262,6 +269,10 @@ if __name__ == "__main__":
         exp_name,
     )
 
-    evaluating(trained_model, tokenizer, test_path, output_dir)
+    dataset_test = evaluating(trained_model, tokenizer, test_path, output_dir)
+
+    # upload config,log,output to gdrive
+    json_report = make_json_report(dataset_test)
+    upload_report(dataset_test, json_report)
 
     wandb.finish()

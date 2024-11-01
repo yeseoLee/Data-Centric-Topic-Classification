@@ -21,4 +21,6 @@ data/
 output/
 **/wandb/
 config/config.yaml
+config/credentials.json
+config/token.json
 nohup.out
