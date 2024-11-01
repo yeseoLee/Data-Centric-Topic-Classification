@@ -13,12 +13,13 @@ import wandb
 from dotenv import load_dotenv
 from datasets import load_dataset
 
-import evaluate
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers import DataCollatorWithPadding
 from transformers import TrainingArguments, Trainer
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
+from tabulate import tabulate
 
 
 class BERTDataset(Dataset):
@@ -84,10 +85,42 @@ def data_setting(test_size, max_length, SEED, train_path, tokenizer):
 
 
 def compute_metrics(eval_pred):
-    f1 = evaluate.load("f1")
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
-    return f1.compute(predictions=predictions, references=labels, average="macro")
+    
+    return {
+        'accuracy': accuracy_score(labels, predictions),
+        'f1': f1_score(labels, predictions, average='macro')
+    }
+
+def compute_metrics_detailed(eval_pred):
+    predictions, labels = eval_pred
+    predictions = np.argmax(predictions, axis=1)
+    
+    # 전체 메트릭
+    accuracy = accuracy_score(labels, predictions)
+    f1_macro = f1_score(labels, predictions, average='macro')
+    
+    # 클래스별 메트릭
+    f1_per_class = f1_score(labels, predictions, average=None)
+    class_accuracies = {}
+    unique_labels = np.unique(labels)
+    for label in unique_labels:
+        mask = labels == label
+        class_accuracies[f'accuracy_class_{label}'] = accuracy_score(labels[mask], predictions[mask])
+    
+    # 전체 메트릭
+    results = {
+        'accuracy': accuracy,
+        'f1': f1_macro,
+    }
+    
+    # 클래스별 메트릭 추가
+    for i, label in enumerate(unique_labels):
+        results[f'f1_class_{label}'] = f1_per_class[i]
+    results.update(class_accuracies)
+    
+    return results
 
 
 # 학습
@@ -101,6 +134,7 @@ def train(
     data_train,
     data_valid,
     data_collator,
+    exp_name
 ):
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -128,6 +162,8 @@ def train(
         metric_for_best_model="eval_f1",
         greater_is_better=True,
         seed=SEED,
+        run_name=exp_name,
+        report_to="wandb",
     )
 
     trainer = Trainer(
@@ -140,6 +176,13 @@ def train(
     )
 
     trainer.train()
+
+    # 테이블 형식으로 detail evaluation 출력
+    trainer.compute_metrics = compute_metrics_detailed
+    final_metrics = trainer.evaluate()   
+    metrics_table = [[metric, f"{value:.4f}"] for metric, value in final_metrics.items() 
+                    if isinstance(value, float)]
+    print("\n" + tabulate(metrics_table, headers=['Metric', 'Value'], tablefmt='grid'))
 
     return model
 
