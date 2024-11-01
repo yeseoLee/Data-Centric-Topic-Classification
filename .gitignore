@@ -21,3 +21,4 @@ data/
 output/
 **/wandb/
 config/config.yaml
+nohup.out
