@@ -16,5 +16,6 @@ huggingface_hub
 python-dotenv
 matplotlib
 seaborn
+Jinja2
 
 pre-commit
