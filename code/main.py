@@ -205,10 +205,16 @@ def evaluating(model, tokenizer, test_path, output_dir):
 
     dataset_test["target"] = preds
     dataset_test.to_csv(os.path.join(output_dir, "output.csv"), index=False)
+    return dataset_test
 
+def debug_print(text):
+    if DEBUG_MODE:
+        print(text)
 
 # config 확인 (print)
 def config_print(config, depth=0):
+    if depth==0:
+        print("*" * 40)
     for k, v in config.items():
         prefix = ["\t" * depth, k, ":"]
 
@@ -218,6 +224,8 @@ def config_print(config, depth=0):
         else:
             prefix.append(v)
             print(*prefix)
+    if depth==0:
+        print("*" * 40)
 
 
 def wandb_name(train_file_name, train_lr, train_batch_size, test_size, user_name):
@@ -246,13 +254,13 @@ def load_env_file(filepath=".env"):
     try:
         # .env 파일 로드 시도
         if load_dotenv(filepath):
-            print(f".env 파일을 성공적으로 로드했습니다: {filepath}")
+            debug_print(f".env 파일을 성공적으로 로드했습니다: {filepath}")
         else:
             raise FileNotFoundError  # 파일이 없으면 예외 발생
     except FileNotFoundError:
-        print(f"경고: 지정된 .env 파일을 찾을 수 없습니다: {filepath}")
+        debug_print(f"경고: 지정된 .env 파일을 찾을 수 없습니다: {filepath}")
     except Exception as e:
-        print(f"오류 발생: .env 파일 로드 중 예외가 발생했습니다: {e}")
+        debug_print(f"오류 발생: .env 파일 로드 중 예외가 발생했습니다: {e}")
 
 
 def check_dataset(hf_organization, hf_token, train_file_name):
@@ -272,7 +280,7 @@ def check_dataset(hf_organization, hf_token, train_file_name):
 
     # Check if local data folder exists
     if not os.path.exists(train_path):
-        print(
+        debug_print(
             f"로컬에 '{train_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다."
         )
 
@@ -282,9 +290,9 @@ def check_dataset(hf_organization, hf_token, train_file_name):
 
         # 데이터셋을 CSV로 저장
         dataset.to_pandas().to_csv(train_path, index=False)
-        print(f"데이터셋이 '{train_path}'에 다운로드되었습니다.")
+        debug_print(f"데이터셋이 '{train_path}'에 다운로드되었습니다.")
     else:
-        print(f"로컬파일을 로드합니다.")
+        debug_print(f"로컬파일을 로드합니다.")
 
 
 if __name__ == "__main__":
@@ -292,15 +300,15 @@ if __name__ == "__main__":
     with open(os.path.join("../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
 
-    # 허깅페이스 API키 관리
-    load_env_file("../setup/.env")
-
     # config의 파라미터를 불러와 변수에 저장함.
     # parser을 사용하여 yaml 가져오기 & parser 입력이 없으면, default yaml을 가져오기
     SEED = CFG["SEED"]
 
     # default는 False, Debug 동작설정
     DEBUG_MODE = CFG.get("DEBUG", False)
+    if not DEBUG_MODE:
+        import warnings
+        warnings.filterwarnings(action='ignore')
 
     train_file_name = CFG["data"]["train_name"]
     output_dir = CFG["data"]["output_dir"]
@@ -314,18 +322,27 @@ if __name__ == "__main__":
 
     user_name = CFG["exp"]["username"]
 
+    # wandb 설정
     wandb_project = CFG["wandb"]["project"]
     wandb_entity = CFG["wandb"]["entity"]
 
-    # Hugging Face 업로드 설정 확인 없어도 오류안뜨도록 .get형태로 불러옴
+    exp_name = wandb_name(
+            train_file_name, learning_rate, train_batch_size, test_size, user_name
+    )
+    wandb.init(
+        project=wandb_project,
+        entity=wandb_entity,
+        name=exp_name,
+    )
+
+    # HuggingFace API키 및 설정
+    load_env_file("../setup/.env")
     hf_config = CFG.get("huggingface", {})
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
     hf_organization = "paper-company"
     hf_model_repo_id = hf_config.get("model_repo_id")
 
-    if DEBUG_MODE:
-        print("Debug mode is ON. Displaying config parameters:")
-        config_print(CFG)
+    config_print(CFG)
 
     # 로컬에 있는지 체크, 다운로드
     check_dataset(hf_organization, hf_token, train_file_name)
@@ -334,19 +351,10 @@ if __name__ == "__main__":
     train_path = os.path.join("..", "data", f"{train_file_name}.csv")
     test_path = os.path.join("..", "data", "test.csv")
 
-    wandb.init(
-        project=wandb_project,
-        entity=wandb_entity,
-        name=wandb_name(
-            train_file_name, learning_rate, train_batch_size, test_size, user_name
-        ),
-    )
-
     seed_fix(SEED)
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    if DEBUG_MODE:
-        print(f"DEVICE : {DEVICE}")
+    debug_print(f"DEVICE : {DEVICE}")
 
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -368,6 +376,7 @@ if __name__ == "__main__":
         data_train,
         data_valid,
         data_collator,
+        exp_name,
     )
 
     evaluating(trained_model, tokenizer, test_path, output_dir)
