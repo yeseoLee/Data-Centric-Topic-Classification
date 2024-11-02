@@ -17,6 +17,7 @@ python-dotenv
 matplotlib
 seaborn
 Jinja2
+tabulate
 
 pre-commit
 
