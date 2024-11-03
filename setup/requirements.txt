@@ -18,6 +18,8 @@ matplotlib
 seaborn
 Jinja2
 tabulate
+konlpy
+gensim
 
 pre-commit
 
