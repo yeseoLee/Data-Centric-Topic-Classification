@@ -1,36 +1,54 @@
 import streamlit as st
-from data_loader import load_data
+from data_loader import save_uploaded_file_to_session
+
 import data_overview
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import noise_viz
 import cleanlab_noize_viz
-import re
 
-# 요번 프로젝트에서 뭐가 중요한지를 계속 생각하면서 무엇을 어떻게 띄울것인지를 생각하자.
 
-st.title("데이터 시각화 대시보드")
-df = load_data()
-
-page = st.sidebar.selectbox(
-    "페이지 선택",
-    ["단순 데이터 시각화", "노이즈 비율 시각화", "클린랩 노이즈 비율 시각화"],
-)
-
-if page == "단순 데이터 시각화":
-    data_overview.show(df)
-
-elif page == "노이즈 비율 시각화":
-    noise_viz.show(df)
-
-elif page == "클린랩 노이즈 비율 시각화":
-    uploaded_file = st.file_uploader(
-        "CSV 파일을 드래그 앤 드롭하거나 선택하세요", type="csv"
+def select_page():
+    page = st.sidebar.selectbox(
+        "페이지 선택",
+        [
+            "단순 데이터 시각화",
+            "노이즈 비율 시각화_단순 특수문자 비율",
+            "클린랩 노이즈 비율 시각화",
+        ],
     )
+    if page == "단순 데이터 시각화":
+        if "data" in st.session_state:
+            data_overview.show(st.session_state["data"])
+        else:
+            st.warning("세션에 저장된 데이터가 없습니다. 파일을 업로드해주세요.")
+
+    elif page == "노이즈 비율 시각화_단순 특수문자 비율":
+        if "data" in st.session_state:
+            noise_viz.show(st.session_state["data"])
+        else:
+            st.warning("세션에 저장된 데이터가 없습니다. 파일을 업로드해주세요.")
+
+    elif page == "클린랩 노이즈 비율 시각화":
+        if "data" in st.session_state:
+            cleanlab_noize_viz.show(st.session_state["data"])
+        else:
+            st.warning("세션에 저장된 데이터가 없습니다. 파일을 업로드해주세요.")
+
+
+def main():
+    st.title("데이터 분석 앱")
+
+    uploaded_file = st.file_uploader("업로드할 파일:", type="csv")
 
     if uploaded_file is not None:
-        cleanlab_noize_viz.show(uploaded_file)
-        cleanlab_noize_viz.visualization(uploaded_file)
+        save_uploaded_file_to_session(uploaded_file)
+
+    # 데이터 출력
+    if "data" in st.session_state:
+        data = st.session_state["data"]
     else:
-        st.write("파일을 업로드해주세요.")
+        st.warning("세션에 저장된 데이터가 없습니다. 위에서 파일을 업로드해주세요.")
+    select_page()
+
+
+if __name__ == "__main__":
+    main()

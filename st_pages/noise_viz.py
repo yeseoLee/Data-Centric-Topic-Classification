@@ -2,15 +2,17 @@ import re
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from data_loader import load_data
 
-df = load_data()
+# from data_loader import load_data
+import data_loader
+
 
 low_noise_threshold = 0.05
 norm_noise_threshold = 0.2
 high_noise_threshold = 0.3
 
 
+# 단순 노이즈 비율 계산 : Context 전체 길이 중 특수문자의 비율
 def calculate_noise_ratio(df):
     df["noise_ratio"] = df["text"].apply(
         lambda x: (
@@ -20,27 +22,6 @@ def calculate_noise_ratio(df):
         )
     )
     return df
-
-
-# def calculate_noise_ratio(df):
-#     for i in range(len(df)):
-#         noise_chars = re.findall(r"[^a-zA-Z0-9\sㄱ-ㅎㅏ-ㅣ가-힣]", df["text"][i])
-#         noise_ratio = (
-#             len(noise_chars) / len(df["text"][i]) if len(df["text"][i]) > 0 else 0
-#         )
-#         df["noise_ratio"] = df["text"].apply(
-#             lambda x: (
-#                 len(re.findall(r"[^a-zA-Z0-9\sㄱ-ㅎㅏ-ㅣ가-힣]", x)) / len(x)
-#                 if len(x) > 0
-#                 else 0
-#             )
-#         )
-#     low_noise = df[df["noise_ratio"] <= low_noise_threshold].shape[0]
-#     norm_noise = df[
-#         (low_noise_threshold < df["noise_ratio"])
-#         & (df["noise_ratio"] <= norm_noise_threshold)
-#     ].shape[0]
-#     high_noise = df[df["noise_ratio"] > high_noise_threshold].shape[0]
 
 
 def show(df):
