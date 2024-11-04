@@ -1,98 +1,28 @@
 import os
-import random
+
 import numpy as np
 import pandas as pd
-from tqdm.notebook import tqdm
 import torch
-from torch.utils.data import Dataset, DataLoader
-import evaluate
-from datasets import load_dataset
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from transformers import DataCollatorWithPadding
-from transformers import TrainingArguments, Trainer
-from sklearn.model_selection import train_test_split, StratifiedKFold
-from cleanlab.filter import find_label_issues
-from huggingface_hub import HfApi, Repository, create_repo
-
 import wandb
-import re
 import yaml
-import argparse
+from cleanlab.filter import find_label_issues
+from main import BERTDataset, compute_metrics, data_setting, evaluating
+from sklearn.model_selection import StratifiedKFold
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    DataCollatorWithPadding,
+    Trainer,
+    TrainingArguments,
+)
+from utils import check_dataset, config_print, get_parser, load_env_file, seed_fix, set_debug_mode, wandb_name
+
 
 """
 1. 훈련된 모델: 훈련이 완료된 모델이 지정된 output 경로에 저장됩니다.
 2. retrained_data.csv: 이 파일은 새롭게 라벨링된 훈련 데이터셋으로, 이후 모델 훈련 시 사용할 수 있습니다.
 3. cleaned_data.csv: 각 라벨의 확률이 포함된 데이터셋으로, 모델의 예측 결과를 확인할 수 있습니다.
 """
-
-
-class BERTDataset(Dataset):
-    def __init__(self, data, tokenizer, max_length):
-        input_texts = data["text"]
-        targets = data["target"]
-        self.inputs = []
-        self.labels = []
-        for text, label in zip(input_texts, targets):
-            tokenized_input = tokenizer(
-                text,
-                padding="max_length",
-                truncation=True,
-                max_length=max_length,
-                return_tensors="pt",
-            )
-            self.inputs.append(tokenized_input)
-            self.labels.append(torch.tensor(label))
-
-    def __getitem__(self, idx):
-        return {
-            "input_ids": self.inputs[idx]["input_ids"].squeeze(0),
-            "attention_mask": self.inputs[idx]["attention_mask"].squeeze(0),
-            "labels": self.labels[idx].squeeze(0),
-        }
-
-    def __len__(self):
-        return len(self.labels)
-
-
-# seed 고정
-def seed_fix(SEED=456):
-    random.seed(SEED)
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    torch.cuda.manual_seed(SEED)
-    torch.cuda.manual_seed_all(SEED)
-
-
-# config parser로 가져오기
-def get_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", type=str, default="config.yaml"
-    )  # 입력 없을 시, 기본값으로 config.yaml을 가져옴
-    return parser.parse_args()
-
-
-def data_setting(test_size, max_length, SEED, train_path, tokenizer):
-    data = pd.read_csv(train_path)
-    dataset_train, dataset_valid = train_test_split(
-        data, test_size=test_size, random_state=SEED
-    )
-
-    data_train = BERTDataset(dataset_train, tokenizer, max_length)
-    data_valid = BERTDataset(dataset_valid, tokenizer, max_length)
-
-    data_collator = DataCollatorWithPadding(
-        tokenizer=tokenizer
-    )  # padding이 되어있지 않아도 자동으로 맞춰주는 역할
-
-    return data_train, data_valid, data_collator
-
-
-def compute_metrics(eval_pred):
-    f1 = evaluate.load("f1")
-    predictions, labels = eval_pred
-    predictions = np.argmax(predictions, axis=1)
-    return f1.compute(predictions=predictions, references=labels, average="macro")
 
 
 def clean_labels(data, pred_probs):
@@ -116,7 +46,7 @@ def clean_labels(data, pred_probs):
     return data
 
 
-def save_modified_data(data):
+def save_modified_data(output_dir, data):
     # 새로운 데이터프레임 생성: ID, text, new_label 열만 포함
     modified_data = data[["ID", "text", "new_label"]].copy()
 
@@ -128,7 +58,7 @@ def save_modified_data(data):
     print("수정된 데이터가 retrained_data.csv로 저장되었습니다.")
 
 
-def train(
+def train_for_clean_labels(
     SEED,
     train_batch_size,
     eval_batch_size,
@@ -138,6 +68,7 @@ def train(
     data_train,
     data_valid,
     data_collator,
+    exp_name,
 ):
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -165,6 +96,8 @@ def train(
         metric_for_best_model="eval_f1",
         greater_is_better=True,
         seed=SEED,
+        run_name=exp_name,
+        report_to="wandb",
     )
 
     data = pd.read_csv(train_path)
@@ -212,47 +145,16 @@ def train(
     cleaned_data.to_csv(os.path.join(output_dir, "cleaned_data.csv"), index=False)
 
     # 수정된 데이터를 저장하는 함수 호출
-    save_modified_data(cleaned_data)
+    save_modified_data(output_dir, cleaned_data)
 
     return model  # 훈련된 모델 반환
 
 
-# config 확인 (print)
-def config_print(config, depth=0):
-    for k, v in config.items():
-        prefix = ["\t" * depth, k, ":"]
-
-        if type(v) == dict:
-            print(*prefix)
-            config_print(v, depth + 1)
-        else:
-            prefix.append(v)
-            print(*prefix)
-
-
-def wandb_name(train_path, train_lr, train_batch_size, test_size, wandb_user_name):
-    match = re.search(r"([^/]+)\.csv$", train_path)
-    data_name = match.group(1) if match else "unknown"
-    lr = train_lr
-    bs = train_batch_size
-    ts = test_size
-    user_name = wandb_user_name
-    return f"{user_name}_{data_name}_{lr}_{bs}_{ts}"
-
-
-def upload_to_huggingface(model, tokenizer, hf_token, hf_organization, hf_repo_id):
-    try:
-        model.push_to_hub(
-            repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
-        )
-        tokenizer.push_to_hub(
-            repo_id=hf_repo_id, organization=hf_organization, use_auth_token=hf_token
-        )
-    except Exception as e:
-        print(f"An error occurred while uploading to Hugging Face: {e}")
-
-
 if __name__ == "__main__":
+    # The current process just got forked, after parallelism has already been used.
+    # Disabling parallelism to avoid deadlocks...
+    # os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
     parser = get_parser()
     with open(os.path.join("../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
@@ -262,10 +164,10 @@ if __name__ == "__main__":
     SEED = CFG["SEED"]
 
     # default는 False, Debug 동작설정
-    DEBUG_MODE = CFG.get("DEBUG", False)
+    set_debug_mode(CFG.get("DEBUG", False))
 
-    train_path = CFG["data"]["train_path"]
-    test_path = CFG["data"]["test_path"]
+    train_file_name = CFG["data"]["train_name"]
+    test_file_name = CFG["data"]["test_name"]
     output_dir = CFG["data"]["output_dir"]
     test_size = CFG["data"]["test_size"]
     max_length = CFG["data"]["max_length"]
@@ -275,43 +177,46 @@ if __name__ == "__main__":
     eval_batch_size = CFG["train"]["eval_batch_size"]
     learning_rate = CFG["train"]["lr"]
 
+    user_name = CFG["exp"]["username"]
+    upload_gdrive = CFG["gdrive"]["upload"]
+
+    # wandb 설정
     wandb_project = CFG["wandb"]["project"]
-    wandb_user_name = CFG["wandb"]["entity"]
+    wandb_entity = CFG["wandb"]["entity"]
 
-    # Hugging Face 업로드 설정 확인 없어도 오류안뜨도록 .get형태로 불러옴
-    hf_config = CFG.get("huggingface", {})
-    hf_token = hf_config.get("token")
-    hf_organization = hf_config.get("organization")
-    hf_repo_id = hf_config.get("repo_id")
-
-    if DEBUG_MODE:
-        print("Debug mode is ON. Displaying config parameters:")
-        config_print(CFG)
-
+    exp_name = wandb_name(train_file_name, learning_rate, train_batch_size, test_size, user_name)
     wandb.init(
         project=wandb_project,
-        name=wandb_name(
-            train_path, learning_rate, train_batch_size, test_size, wandb_user_name
-        ),
+        entity=wandb_entity,
+        name=exp_name,
     )
+
+    # HuggingFace API키 및 설정
+    load_env_file("../setup/.env")
+    hf_config = CFG.get("huggingface", {})
+    hf_token = os.getenv("HUGGINGFACE_TOKEN")
+    hf_organization = "paper-company"
+
+    config_print(CFG)
+
+    # 로컬에 있는지 체크, 다운로드
+    check_dataset(hf_organization, hf_token, train_file_name)
+
+    # link data
+    train_path = os.path.join("..", "data", f"{train_file_name}.csv")
+    test_path = os.path.join("..", "data", f"{test_file_name}.csv")
 
     seed_fix(SEED)
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    if DEBUG_MODE:
-        print(f"DEVICE : {DEVICE}")
 
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_name, num_labels=7
-    ).to(DEVICE)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 
-    data_train, data_valid, data_collator = data_setting(
-        test_size, max_length, SEED, train_path, tokenizer
-    )
+    data_train, data_valid, data_collator = data_setting(test_size, max_length, SEED, train_path, tokenizer)
 
-    trained_model = train(
+    trained_model = train_for_clean_labels(
         SEED,
         train_batch_size,
         eval_batch_size,
@@ -321,4 +226,9 @@ if __name__ == "__main__":
         data_train,
         data_valid,
         data_collator,
+        exp_name,
     )
+
+    dataset_test = evaluating(DEVICE, trained_model, tokenizer, eval_batch_size, test_path, output_dir)
+
+    wandb.finish()

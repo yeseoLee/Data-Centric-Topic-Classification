@@ -1,19 +1,33 @@
 import os
+
 import numpy as np
 import pandas as pd
 import torch
 import wandb
 import yaml
-
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import train_test_split
 from tabulate import tabulate
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from transformers import DataCollatorWithPadding
-from transformers import TrainingArguments, Trainer
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, accuracy_score
-from utils import *
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    DataCollatorWithPadding,
+    Trainer,
+    TrainingArguments,
+)
+from utils import (
+    check_dataset,
+    config_print,
+    get_parser,
+    load_env_file,
+    make_json_report,
+    seed_fix,
+    set_debug_mode,
+    upload_report,
+    wandb_name,
+)
 
 
 class BERTDataset(Dataset):
@@ -46,16 +60,12 @@ class BERTDataset(Dataset):
 
 def data_setting(test_size, max_length, SEED, train_path, tokenizer):
     data = pd.read_csv(train_path)
-    dataset_train, dataset_valid = train_test_split(
-        data, test_size=test_size, random_state=SEED
-    )
+    dataset_train, dataset_valid = train_test_split(data, test_size=test_size, random_state=SEED)
 
     data_train = BERTDataset(dataset_train, tokenizer, max_length)
     data_valid = BERTDataset(dataset_valid, tokenizer, max_length)
 
-    data_collator = DataCollatorWithPadding(
-        tokenizer=tokenizer
-    )  # padding이 되어있지 않아도 자동으로 맞춰주는 역할
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)  # padding이 되어있지 않아도 자동으로 맞춰주는 역할
 
     return data_train, data_valid, data_collator
 
@@ -84,9 +94,7 @@ def compute_metrics_detailed(eval_pred):
     unique_labels = np.unique(labels)
     for label in unique_labels:
         mask = labels == label
-        class_accuracies[f"accuracy_class_{label}"] = accuracy_score(
-            labels[mask], predictions[mask]
-        )
+        class_accuracies[f"accuracy_class_{label}"] = accuracy_score(labels[mask], predictions[mask])
 
     # 전체 메트릭
     results = {
@@ -159,18 +167,14 @@ def train(
     # 테이블 형식으로 detail evaluation 출력
     trainer.compute_metrics = compute_metrics_detailed
     final_metrics = trainer.evaluate()
-    metrics_table = [
-        [metric, f"{value:.4f}"]
-        for metric, value in final_metrics.items()
-        if isinstance(value, float)
-    ]
+    metrics_table = [[metric, f"{value:.4f}"] for metric, value in final_metrics.items() if isinstance(value, float)]
     print("\n" + tabulate(metrics_table, headers=["Metric", "Value"], tablefmt="grid"))
 
     return model
 
 
 # 평가
-def evaluating(model, tokenizer, eval_batch_size, test_path, output_dir):
+def evaluating(device, model, tokenizer, eval_batch_size, test_path, output_dir):
     model.eval()
     preds = []
 
@@ -183,9 +187,7 @@ def evaluating(model, tokenizer, eval_batch_size, test_path, output_dir):
         texts = batch_samples["text"].tolist()
 
         # 배치 단위로 토크나이징
-        inputs = tokenizer(
-            texts, return_tensors="pt", padding=True, truncation=True
-        ).to(DEVICE)
+        inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(device)
 
         # 예측
         with torch.no_grad():
@@ -228,9 +230,7 @@ if __name__ == "__main__":
     wandb_project = CFG["wandb"]["project"]
     wandb_entity = CFG["wandb"]["entity"]
 
-    exp_name = wandb_name(
-        train_file_name, learning_rate, train_batch_size, test_size, user_name
-    )
+    exp_name = wandb_name(train_file_name, learning_rate, train_batch_size, test_size, user_name)
     wandb.init(
         project=wandb_project,
         entity=wandb_entity,
@@ -258,13 +258,9 @@ if __name__ == "__main__":
 
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_name, num_labels=7
-    ).to(DEVICE)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 
-    data_train, data_valid, data_collator = data_setting(
-        test_size, max_length, SEED, train_path, tokenizer
-    )
+    data_train, data_valid, data_collator = data_setting(test_size, max_length, SEED, train_path, tokenizer)
 
     trained_model = train(
         SEED,
@@ -279,9 +275,7 @@ if __name__ == "__main__":
         exp_name,
     )
 
-    dataset_test = evaluating(
-        trained_model, tokenizer, eval_batch_size, test_path, output_dir
-    )
+    dataset_test = evaluating(DEVICE, trained_model, tokenizer, eval_batch_size, test_path, output_dir)
 
     # upload output & report to gdrive
     if upload_gdrive:
