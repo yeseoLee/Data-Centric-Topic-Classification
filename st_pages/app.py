@@ -30,6 +30,8 @@ def select_page():
     elif page == "클린랩 노이즈 비율 시각화":
         if "data" in st.session_state:
             cleanlab_noize_viz.show(st.session_state["data"])
+            cleanlab_noize_viz.visualization(st.session_state["data"])
+
         else:
             st.warning("세션에 저장된 데이터가 없습니다. 파일을 업로드해주세요.")
 
