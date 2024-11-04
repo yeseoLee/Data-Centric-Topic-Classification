@@ -7,6 +7,7 @@ import pandas as pd
 import streamlit as st
 from sklearn.manifold import TSNE
 
+
 # 모든 경고 무시
 warnings.filterwarnings("ignore")
 
@@ -23,11 +24,7 @@ high_noise_threshold = 0.3
 
 def calculate_noise_ratio(df):
     df["noise_ratio"] = df["text"].apply(
-        lambda x: (
-            len(re.findall(r"[^a-zA-Z0-9\sㄱ-ㅎㅏ-ㅣ가-힣]", x)) / len(x)
-            if len(x) > 0
-            else 0
-        )
+        lambda x: (len(re.findall(r"[^a-zA-Z0-9\sㄱ-ㅎㅏ-ㅣ가-힣]", x)) / len(x) if len(x) > 0 else 0)
     )
     return df
 
@@ -120,16 +117,11 @@ def show(uploaded_file):
     new_labeled_df = df[df["target"] != df["new_label"]]
 
     st.header("새롭게 라벨링된 데이터의 노이즈 비율")
-    low_noise = new_labeled_df[
-        new_labeled_df["noise_ratio"] <= low_noise_threshold
-    ].shape[0]
+    low_noise = new_labeled_df[new_labeled_df["noise_ratio"] <= low_noise_threshold].shape[0]
     norm_noise = new_labeled_df[
-        (low_noise_threshold < new_labeled_df["noise_ratio"])
-        & (new_labeled_df["noise_ratio"] <= norm_noise_threshold)
+        (low_noise_threshold < new_labeled_df["noise_ratio"]) & (new_labeled_df["noise_ratio"] <= norm_noise_threshold)
     ].shape[0]
-    high_noise = new_labeled_df[
-        new_labeled_df["noise_ratio"] > norm_noise_threshold
-    ].shape[0]
+    high_noise = new_labeled_df[new_labeled_df["noise_ratio"] > norm_noise_threshold].shape[0]
 
     categories = ["low_noise", "norm_noise", "high_noise"]
     values = [low_noise, norm_noise, high_noise]
@@ -144,23 +136,17 @@ def show(uploaded_file):
 
     # 새롭게 라벨링된 데이터의 노이즈 비율에 따른 데이터 보기
     st.header("새롭게 라벨링된 데이터의 노이즈 비율에 따른 데이터 보기")
-    noise_category = st.selectbox(
-        "노이즈 비율 카테고리 선택:", ["None", "low_noise", "norm_noise", "high_noise"]
-    )
+    noise_category = st.selectbox("노이즈 비율 카테고리 선택:", ["None", "low_noise", "norm_noise", "high_noise"])
 
     if noise_category == "low_noise":
-        selected_data = new_labeled_df[
-            new_labeled_df["noise_ratio"] <= low_noise_threshold
-        ]
+        selected_data = new_labeled_df[new_labeled_df["noise_ratio"] <= low_noise_threshold]
     elif noise_category == "norm_noise":
         selected_data = new_labeled_df[
             (low_noise_threshold < new_labeled_df["noise_ratio"])
             & (new_labeled_df["noise_ratio"] <= norm_noise_threshold)
         ]
     elif noise_category == "high_noise":
-        selected_data = new_labeled_df[
-            new_labeled_df["noise_ratio"] > high_noise_threshold
-        ]
+        selected_data = new_labeled_df[new_labeled_df["noise_ratio"] > high_noise_threshold]
     else:
         selected_data = new_labeled_df
 

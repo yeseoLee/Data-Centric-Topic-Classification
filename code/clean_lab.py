@@ -15,15 +15,8 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import (
-    check_dataset,
-    config_print,
-    get_parser,
-    load_env_file,
-    seed_fix,
-    set_debug_mode,
-    wandb_name,
-)
+from utils import check_dataset, config_print, get_parser, load_env_file, seed_fix, set_debug_mode, wandb_name
+
 
 """
 1. 훈련된 모델: 훈련이 완료된 모델이 지정된 output 경로에 저장됩니다.
@@ -191,9 +184,7 @@ if __name__ == "__main__":
     wandb_project = CFG["wandb"]["project"]
     wandb_entity = CFG["wandb"]["entity"]
 
-    exp_name = wandb_name(
-        train_file_name, learning_rate, train_batch_size, test_size, user_name
-    )
+    exp_name = wandb_name(train_file_name, learning_rate, train_batch_size, test_size, user_name)
     wandb.init(
         project=wandb_project,
         entity=wandb_entity,
@@ -221,13 +212,9 @@ if __name__ == "__main__":
 
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_name, num_labels=7
-    ).to(DEVICE)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 
-    data_train, data_valid, data_collator = data_setting(
-        test_size, max_length, SEED, train_path, tokenizer
-    )
+    data_train, data_valid, data_collator = data_setting(test_size, max_length, SEED, train_path, tokenizer)
 
     trained_model = train_for_clean_labels(
         SEED,
@@ -242,8 +229,6 @@ if __name__ == "__main__":
         exp_name,
     )
 
-    dataset_test = evaluating(
-        DEVICE, trained_model, tokenizer, eval_batch_size, test_path, output_dir
-    )
+    dataset_test = evaluating(DEVICE, trained_model, tokenizer, eval_batch_size, test_path, output_dir)
 
     wandb.finish()

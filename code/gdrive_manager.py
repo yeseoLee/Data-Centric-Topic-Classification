@@ -9,15 +9,14 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
+
 SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive",
 ]
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config", type=str, default="config.yaml"
-)  # 입력 없을 시, 기본값으로 config.yaml을 가져옴
+parser.add_argument("--config", type=str, default="config.yaml")  # 입력 없을 시, 기본값으로 config.yaml을 가져옴
 parser = parser.parse_args()
 with open(os.path.join("../config", parser.config)) as f:
     CFG = yaml.safe_load(f)
@@ -95,16 +94,10 @@ class GoogleDriveManager:
                 file_metadata["parents"] = [folder_id]
 
             # 미디어 객체 생성
-            media = MediaIoBaseUpload(
-                file_stream, mimetype="application/json", resumable=True
-            )
+            media = MediaIoBaseUpload(file_stream, mimetype="application/json", resumable=True)
 
             # 파일 업로드
-            file = (
-                self.service.files()
-                .create(body=file_metadata, media_body=media, fields="id, name")
-                .execute()
-            )
+            file = self.service.files().create(body=file_metadata, media_body=media, fields="id, name").execute()
             return file
 
         except Exception as e:
@@ -128,11 +121,7 @@ class GoogleDriveManager:
             media = MediaIoBaseUpload(file_stream, mimetype="text/csv", resumable=True)
 
             # 파일 업로드
-            file = (
-                self.service.files()
-                .create(body=file_metadata, media_body=media, fields="id, name")
-                .execute()
-            )
+            file = self.service.files().create(body=file_metadata, media_body=media, fields="id, name").execute()
             return file
 
         except Exception as e:
