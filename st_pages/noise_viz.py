@@ -1,7 +1,8 @@
 import re
-import streamlit as st
-import pandas as pd
+
 import matplotlib.pyplot as plt
+import pandas as pd
+import streamlit as st
 from data_loader import load_data
 
 df = load_data()

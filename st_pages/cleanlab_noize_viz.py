@@ -1,14 +1,11 @@
 import re
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.manifold import TSNE
 import warnings
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import streamlit as st
+from sklearn.manifold import TSNE
 
 # 모든 경고 무시
 warnings.filterwarnings("ignore")

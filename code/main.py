@@ -1,19 +1,33 @@
 import os
+
 import numpy as np
 import pandas as pd
 import torch
 import wandb
 import yaml
-
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import train_test_split
 from tabulate import tabulate
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from transformers import DataCollatorWithPadding
-from transformers import TrainingArguments, Trainer
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, accuracy_score
-from utils import *
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    DataCollatorWithPadding,
+    Trainer,
+    TrainingArguments,
+)
+from utils import (
+    check_dataset,
+    config_print,
+    get_parser,
+    load_env_file,
+    make_json_report,
+    seed_fix,
+    set_debug_mode,
+    upload_report,
+    wandb_name,
+)
 
 
 class BERTDataset(Dataset):
@@ -170,7 +184,7 @@ def train(
 
 
 # 평가
-def evaluating(model, tokenizer, eval_batch_size, test_path, output_dir):
+def evaluating(device, model, tokenizer, eval_batch_size, test_path, output_dir):
     model.eval()
     preds = []
 
@@ -185,7 +199,7 @@ def evaluating(model, tokenizer, eval_batch_size, test_path, output_dir):
         # 배치 단위로 토크나이징
         inputs = tokenizer(
             texts, return_tensors="pt", padding=True, truncation=True
-        ).to(DEVICE)
+        ).to(device)
 
         # 예측
         with torch.no_grad():
@@ -280,7 +294,7 @@ if __name__ == "__main__":
     )
 
     dataset_test = evaluating(
-        trained_model, tokenizer, eval_batch_size, test_path, output_dir
+        DEVICE, trained_model, tokenizer, eval_batch_size, test_path, output_dir
     )
 
     # upload output & report to gdrive
