@@ -54,7 +54,7 @@ def config_print(config, depth=0):
     for k, v in config.items():
         prefix = ["\t" * depth, k, ":"]
 
-        if type(v) == dict:
+        if isinstance(v, dict):
             print(*prefix)
             config_print(v, depth + 1)
         else:
@@ -95,7 +95,7 @@ def check_dataset(hf_organization, hf_token, train_file_name):
     - hf_organization (str): Hugging Face Organization 이름
     - hf_token (str): Hugging Face 토큰
     - train_file_name (str): 로컬에 저장할 train file 이름
-    - dataset_repo_id (str): Hugging Face에 저장된 데이터셋 리포지토리 ID (기본값: "datacentric-orginal")
+    - dataset_repo_id (str): Hugging Face에 저장된 데이터셋 리포지토리 ID (기본값: datacentric-orginal)
     """
     # Define the folder path and file paths
     folder_path = os.path.join("..", "data")
@@ -115,7 +115,7 @@ def check_dataset(hf_organization, hf_token, train_file_name):
         dataset.to_pandas().to_csv(train_path, index=False)
         debug_print(f"데이터셋이 '{train_path}'에 다운로드되었습니다.")
     else:
-        debug_print(f"로컬파일을 로드합니다.")
+        debug_print("로컬파일을 로드합니다.")
 
 
 def get_timestamp():
