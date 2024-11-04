@@ -1,8 +1,9 @@
 import os
+
 import yaml
-from huggingface_hub import HfApi
 from datasets import load_dataset
-from main import load_env_file, get_parser
+from huggingface_hub import HfApi
+from main import get_parser, load_env_file
 
 
 def upload_train_file_to_hub(file_name, token, private=True):
@@ -23,17 +24,11 @@ def upload_train_file_to_hub(file_name, token, private=True):
     # 리포지토리 존재 여부 확인
     try:
         api.repo_info(repo_id, repo_type="dataset", token=token)
-        print(
-            f"'{repo_id}' 리포지토리가 이미 존재합니다. 기존 리포지토리에 데이터셋을 업로드합니다."
-        )
-    except Exception as e:
+        print(f"'{repo_id}' 리포지토리가 이미 존재합니다. 기존 리포지토리에 데이터셋을 업로드합니다.")
+    except Exception:
         # 리포지토리가 없으면 생성
-        print(
-            f"'{repo_id}' 리포지토리가 존재하지 않습니다. 새로 생성한 후 업로드합니다."
-        )
-        api.create_repo(
-            repo_id=repo_id, repo_type="dataset", private=private, token=token
-        )
+        print(f"'{repo_id}' 리포지토리가 존재하지 않습니다. 새로 생성한 후 업로드합니다.")
+        api.create_repo(repo_id=repo_id, repo_type="dataset", private=private, token=token)
 
     # 파일 경로 설정
     file_path = os.path.join("..", "data", f"{file_name}.csv")

@@ -1,5 +1,6 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
+
 
 # 파일 업로더
 uploaded_file = st.file_uploader("업로드할 파일:", type="csv")

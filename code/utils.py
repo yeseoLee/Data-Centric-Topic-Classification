@@ -1,14 +1,15 @@
-import os
-import numpy as np
 import argparse
-import torch
+import json
+import os
 import random
 import time
-import json
 
-from dotenv import load_dotenv
+import numpy as np
+import torch
 from datasets import load_dataset
+from dotenv import load_dotenv
 from gdrive_manager import GoogleDriveManager
+
 
 DEBUG_MODE = False
 
@@ -41,9 +42,7 @@ def debug_print(text):
 # config parser로 가져오기
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", type=str, default="config.yaml"
-    )  # 입력 없을 시, 기본값으로 config.yaml을 가져옴
+    parser.add_argument("--config", type=str, default="config.yaml")  # 입력 없을 시, 기본값으로 config.yaml을 가져옴
     return parser.parse_args()
 
 
@@ -54,7 +53,7 @@ def config_print(config, depth=0):
     for k, v in config.items():
         prefix = ["\t" * depth, k, ":"]
 
-        if type(v) == dict:
+        if isinstance(v, dict):
             print(*prefix)
             config_print(v, depth + 1)
         else:
@@ -95,7 +94,7 @@ def check_dataset(hf_organization, hf_token, train_file_name):
     - hf_organization (str): Hugging Face Organization 이름
     - hf_token (str): Hugging Face 토큰
     - train_file_name (str): 로컬에 저장할 train file 이름
-    - dataset_repo_id (str): Hugging Face에 저장된 데이터셋 리포지토리 ID (기본값: "datacentric-orginal")
+    - dataset_repo_id (str): Hugging Face에 저장된 데이터셋 리포지토리 ID (기본값: datacentric-orginal)
     """
     # Define the folder path and file paths
     folder_path = os.path.join("..", "data")
@@ -103,9 +102,7 @@ def check_dataset(hf_organization, hf_token, train_file_name):
 
     # Check if local data folder exists
     if not os.path.exists(train_path):
-        debug_print(
-            f"로컬에 '{train_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다."
-        )
+        debug_print(f"로컬에 '{train_path}' 데이터가 존재하지 않습니다.허깅페이스에서 다운로드를 시도합니다.")
 
         # Load dataset from Hugging Face if local folder is missing
         full_repo_id = f"{hf_organization}/datacentric-{train_file_name}"
@@ -115,7 +112,7 @@ def check_dataset(hf_organization, hf_token, train_file_name):
         dataset.to_pandas().to_csv(train_path, index=False)
         debug_print(f"데이터셋이 '{train_path}'에 다운로드되었습니다.")
     else:
-        debug_print(f"로컬파일을 로드합니다.")
+        debug_print("로컬파일을 로드합니다.")
 
 
 def get_timestamp():
@@ -133,26 +130,20 @@ def make_json_report(df):
 
     # Public 데이터셋의 클래스별 샘플 수
     public_distribution = {
-        "class_distribution": {
-            str(i): int(p * public_samples) for i, p in enumerate(public_percentages)
-        },
+        "class_distribution": {str(i): int(p * public_samples) for i, p in enumerate(public_percentages)},
         "num_classes": 7,
-        "class_balance": {
-            str(i): round(p, 4) for i, p in enumerate(public_percentages)
-        },
+        "class_balance": {str(i): round(p, 4) for i, p in enumerate(public_percentages)},
     }
 
     # Private 데이터셋의 클래스별 샘플 수
     private_distribution = {
         "class_distribution": {
-            str(i): total_per_class - public_distribution["class_distribution"][str(i)]
-            for i in range(7)
+            str(i): total_per_class - public_distribution["class_distribution"][str(i)] for i in range(7)
         },
         "num_classes": 7,
         "class_balance": {
             str(i): round(
-                (total_per_class - public_distribution["class_distribution"][str(i)])
-                / 15000,
+                (total_per_class - public_distribution["class_distribution"][str(i)]) / 15000,
                 4,
             )
             for i in range(7)
@@ -165,10 +156,7 @@ def make_json_report(df):
     json_report["target_distribution"] = {
         "class_distribution": sorted_target_counts,
         "num_classes": len(sorted_target_counts),
-        "class_balance": {
-            str(label): round(count / len(df), 4)
-            for label, count in sorted_target_counts.items()
-        },
+        "class_balance": {str(label): round(count / len(df), 4) for label, count in sorted_target_counts.items()},
     }
 
     json_report["public_distribution"] = public_distribution
@@ -196,12 +184,8 @@ def upload_report(dataset_name, user_name, exp_name, result_df, result_json):
     folder_id = drive_manager.find_folder_id_by_name(f"{user_name}-{dataset_name}")
     if not folder_id:
         folder_id = drive_manager.find_folder_id_by_name(user_name)
-    _ = drive_manager.upload_dataframe(
-        result_df, f"{exp_name}_{timestamp}_output.csv", folder_id
-    )
-    _ = drive_manager.upload_json_data(
-        result_json, f"{exp_name}_{timestamp}_report.json", folder_id
-    )
+    _ = drive_manager.upload_dataframe(result_df, f"{exp_name}_{timestamp}_output.csv", folder_id)
+    _ = drive_manager.upload_json_data(result_json, f"{exp_name}_{timestamp}_report.json", folder_id)
 
     gdrive_url = f"https://drive.google.com/drive/folders/{folder_id}"
     print(f"구글 드라이브에 업로드 되었습니다: {gdrive_url}")

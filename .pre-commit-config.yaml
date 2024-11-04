@@ -1,5 +1,8 @@
 repos:
--   repo: https://github.com/psf/black
-    rev: 24.10.0
+-   repo: local
     hooks:
-    -   id: black
+    - id: style
+      name: style
+      language: system
+      entry: make style
+      types: [python]
