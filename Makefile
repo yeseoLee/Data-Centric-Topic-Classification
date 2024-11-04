@@ -20,7 +20,7 @@ set-precommit:
 	pre-commit install
 
 set-dev:
-	pip3 install -r requirements.txt
+	pip3 install -r ./setup/requirements.txt
 
 set-test:
 	python3 -m pytest tests/
