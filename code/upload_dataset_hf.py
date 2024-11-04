@@ -1,8 +1,9 @@
 import os
+
 import yaml
-from huggingface_hub import HfApi
 from datasets import load_dataset
-from main import load_env_file, get_parser
+from huggingface_hub import HfApi
+from main import get_parser, load_env_file
 
 
 def upload_train_file_to_hub(file_name, token, private=True):

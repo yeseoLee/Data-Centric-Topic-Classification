@@ -1,8 +1,8 @@
-import streamlit as st
-from data_loader import load_data
+import cleanlab_noize_viz
 import data_overview
 import noise_viz
-import cleanlab_noize_viz
+import streamlit as st
+from data_loader import load_data
 
 # 요번 프로젝트에서 뭐가 중요한지를 계속 생각하면서 무엇을 어떻게 띄울것인지를 생각하자.
 

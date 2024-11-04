@@ -1,8 +1,7 @@
-import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
+import streamlit as st
 from data_loader import load_data
-
 
 df = load_data()
 
