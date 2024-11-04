@@ -1,14 +1,8 @@
 repos:
--   repo: https://github.com/psf/black
-    rev: 24.10.0
+-   repo: local
     hooks:
-    -   id: black
--   repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
-    hooks:
-    -   id: flake8
--   repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-    -   id: isort
-        args: ["--profile", "black", "--filter-files"]
+    - id: style
+      name: style
+      language: system
+      entry: make style
+      types: [python]
