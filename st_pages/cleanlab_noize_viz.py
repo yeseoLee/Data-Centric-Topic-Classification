@@ -29,20 +29,10 @@ def calculate_noise_ratio(df):
     return df
 
 
-def visualization(uploaded_file):
+def visualization(df):
     st.title("t-SNE 시각화")
-    # 업로드된 파일을 DataFrame으로 변환
-    # 파일 포인터를 시작으로 되돌림
-    uploaded_file.seek(0)
 
-    # 업로드된 파일을 DataFrame으로 변환
-    try:
-        data = pd.read_csv(uploaded_file)
-    except pd.errors.EmptyDataError:
-        st.error("업로드된 파일이 비어있거나 올바른 CSV 형식이 아닙니다.")
-        return
-
-    data["prob"] = data["prob"].apply(str_to_np_array)
+    df["prob"] = df["prob"].apply(str_to_np_array)
 
     # t-SNE 파라미터 설정
     perplexity = st.slider("Perplexity", 5, 50, 30)
@@ -59,12 +49,12 @@ def visualization(uploaded_file):
         n_iter=n_iter,
     )
 
-    coords = tsne.fit_transform(np.stack(data["prob"].values))
+    coords = tsne.fit_transform(np.stack(df["prob"].values))
 
     # 결과를 DataFrame으로 변환
     df_plot = pd.DataFrame(data=coords, columns=["TSNE1", "TSNE2"])
-    df_plot["target"] = data["target"]
-    df_plot["new_label"] = data["new_label"]
+    df_plot["target"] = df["target"]
+    df_plot["new_label"] = df["new_label"]
 
     # 그래프 그리기
     fig, ax = plt.subplots(figsize=(12, 8))
@@ -103,14 +93,17 @@ def visualization(uploaded_file):
     # 변경된 라벨 수 출력
     st.write(f"Number of changed labels: {changed_mask.sum()}")
     st.write("\nChanged labels details:")
-    st.write(data[changed_mask][["target", "new_label"]].value_counts().sort_index())
+    st.write(df[changed_mask][["target", "new_label"]].value_counts().sort_index())
 
 
-def show(uploaded_file):
+def show(df):
     st.header("클린랩 리라벨링 노이즈 분석")
 
+    if "new_label" not in df.columns:
+        st.warning("데이터프레임에 'new_label' 열이 없습니다.")
+        return
+
     # 업로드된 파일을 DataFrame으로 변환
-    df = pd.read_csv(uploaded_file)
     df = calculate_noise_ratio(df)
 
     # 새롭게 라벨링된 데이터만 선택
@@ -139,16 +132,23 @@ def show(uploaded_file):
     noise_category = st.selectbox("노이즈 비율 카테고리 선택:", ["None", "low_noise", "norm_noise", "high_noise"])
 
     if noise_category == "low_noise":
-        selected_data = new_labeled_df[new_labeled_df["noise_ratio"] <= low_noise_threshold]
+        selected_data = new_labeled_df[new_labeled_df["noise_ratio"] <= low_noise_threshold].sort_values(
+            by="noise_ratio"
+        )
+
     elif noise_category == "norm_noise":
         selected_data = new_labeled_df[
             (low_noise_threshold < new_labeled_df["noise_ratio"])
             & (new_labeled_df["noise_ratio"] <= norm_noise_threshold)
-        ]
+        ].sort_values(by="noise_ratio")
+
     elif noise_category == "high_noise":
-        selected_data = new_labeled_df[new_labeled_df["noise_ratio"] > high_noise_threshold]
+        selected_data = new_labeled_df[new_labeled_df["noise_ratio"] > high_noise_threshold].sort_values(
+            by="noise_ratio"
+        )
+
     else:
-        selected_data = new_labeled_df
+        selected_data = new_labeled_df.sort_values(by="noise_ratio")
 
     # 'prob' 열을 제거한 후 표시
     if "prob" in selected_data.columns:
