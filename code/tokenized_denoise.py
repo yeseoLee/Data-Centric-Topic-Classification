@@ -25,8 +25,8 @@ def denoise(batch_texts, tokenizer, model):
 # 데이터를 처리하는 메인 함수 정의
 def process_data(input_file, output_file, batch_size=16):
     # 모델과 토크나이저 로드
-    tokenizer = AutoTokenizer.from_pretrained("kfkas/t5-large-korean-P2G")
-    model = AutoModelForSeq2SeqLM.from_pretrained("kfkas/t5-large-korean-P2G")
+    tokenizer = AutoTokenizer.from_pretrained("eenzeenee/t5-base-korean-summarization")
+    model = AutoModelForSeq2SeqLM.from_pretrained("eenzeenee/t5-base-korean-summarization")
 
     # 입력 데이터 읽기
     data = pd.read_csv(input_file)
@@ -53,8 +53,8 @@ def process_data(input_file, output_file, batch_size=16):
 # 스크립트가 직접 실행될 때 수행되는 코드
 if __name__ == "__main__":
     # 입력 파일 경로 설정
-    input_file = "../data/train.csv"
+    input_file = "../data/3_d_2800_hanzi_dictionary.csv"
     # 출력 파일 경로 설정
-    output_file = "../data/tokenized_denoised_data.csv"
+    output_file = "../data/tokenized_denoised_data2.csv"
     # 데이터 처리 함수 호출
     process_data(input_file, output_file)
