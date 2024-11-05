@@ -19,6 +19,7 @@ venv.bak/
 tmp/
 data/
 output/
+outputs/
 **/wandb/
 config/config.yaml
 config/credentials.json
