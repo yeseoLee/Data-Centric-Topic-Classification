@@ -50,7 +50,7 @@ def show(df):
         selected_data = df[df["noise_ratio"] <= low_noise_threshold].sort_values(
             by="noise_ratio"
         )
-        
+
     elif noise_category == "norm_noise":
 
         selected_data = df[

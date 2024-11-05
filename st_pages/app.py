@@ -5,6 +5,7 @@ import streamlit as st
 import tokenize_viz
 from data_loader import save_uploaded_file_to_session
 
+
 def select_page():
     page = st.sidebar.selectbox(
         "페이지 선택",
@@ -35,7 +36,7 @@ def select_page():
         else:
             st.warning("세션에 저장된 데이터가 없습니다. 파일을 업로드해주세요.")
 
-            
+
     elif page == "토크나이징":
         if "data" in st.session_state:
             tokenize_viz.show(st.session_state["data"])
@@ -46,7 +47,7 @@ def main():
 
     uploaded_file = st.file_uploader("업로드할 파일:", type="csv")
 
-    
+
     if uploaded_file is not None:
         save_uploaded_file_to_session(uploaded_file)
 
