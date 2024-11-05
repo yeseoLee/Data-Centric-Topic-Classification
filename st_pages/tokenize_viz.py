@@ -1,5 +1,6 @@
-from transformers import AutoTokenizer
 import streamlit as st
+from transformers import AutoTokenizer
+
 
 tokenizer = AutoTokenizer.from_pretrained("klue/roberta-base")
 

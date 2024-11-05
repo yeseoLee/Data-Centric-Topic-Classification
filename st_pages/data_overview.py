@@ -1,12 +1,14 @@
-import streamlit as st
+# from data_loader import load_data
 import matplotlib.pyplot as plt
 import seaborn as sns
+import streamlit as st
+
 
 def show(df):
     # 타겟값 기준으로 데이터 직접 보기
     st.header("라벨값 기준으로 데이터 살펴보기")
     target_value = st.selectbox(
-      "label :", df["target"].sort_values(ascending=True).unique()
+        "label :", df["target"].sort_values(ascending=True).unique()
     )
     filtered_data = df[df["target"] == target_value]
     st.write(filtered_data)

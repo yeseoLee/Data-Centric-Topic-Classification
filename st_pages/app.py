@@ -1,10 +1,9 @@
-import streamlit as st
-
-from data_loader import save_uploaded_file_to_session
+import cleanlab_noize_viz
 import data_overview
 import noise_viz
-import cleanlab_noize_viz
+import streamlit as st
 import tokenize_viz
+from data_loader import save_uploaded_file_to_session
 
 def select_page():
     page = st.sidebar.selectbox(
