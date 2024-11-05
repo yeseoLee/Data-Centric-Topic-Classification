@@ -2,30 +2,60 @@ import cleanlab_noize_viz
 import data_overview
 import noise_viz
 import streamlit as st
-from data_loader import load_data
+import tokenize_viz
+from data_loader import save_uploaded_file_to_session
 
 
-# 요번 프로젝트에서 뭐가 중요한지를 계속 생각하면서 무엇을 어떻게 띄울것인지를 생각하자.
+def select_page():
+    page = st.sidebar.selectbox(
+        "페이지 선택",
+        [
+            "단순 데이터 시각화",
+            "노이즈 비율 시각화_단순 특수문자 비율",
+            "클린랩 노이즈 비율 시각화",
+            "토크나이징",
+        ],
+    )
+    if page == "단순 데이터 시각화":
+        if "data" in st.session_state:
+            data_overview.show(st.session_state["data"])
+        else:
+            st.warning("세션에 저장된 데이터가 없습니다. 파일을 업로드해주세요.")
 
-st.title("데이터 시각화 대시보드")
-df = load_data()
+    elif page == "노이즈 비율 시각화_단순 특수문자 비율":
+        if "data" in st.session_state:
+            noise_viz.show(st.session_state["data"])
+        else:
+            st.warning("세션에 저장된 데이터가 없습니다. 파일을 업로드해주세요.")
 
-page = st.sidebar.selectbox(
-    "페이지 선택",
-    ["단순 데이터 시각화", "노이즈 비율 시각화", "클린랩 노이즈 비율 시각화"],
-)
+    elif page == "클린랩 노이즈 비율 시각화":
+        if "data" in st.session_state:
+            cleanlab_noize_viz.show(st.session_state["data"])
+            cleanlab_noize_viz.visualization(st.session_state["data"])
 
-if page == "단순 데이터 시각화":
-    data_overview.show(df)
+        else:
+            st.warning("세션에 저장된 데이터가 없습니다. 파일을 업로드해주세요.")
 
-elif page == "노이즈 비율 시각화":
-    noise_viz.show(df)
+    elif page == "토크나이징":
+        if "data" in st.session_state:
+            tokenize_viz.show(st.session_state["data"])
 
-elif page == "클린랩 노이즈 비율 시각화":
-    uploaded_file = st.file_uploader("CSV 파일을 드래그 앤 드롭하거나 선택하세요", type="csv")
+
+def main():
+    st.title("데이터 분석 앱")
+
+    uploaded_file = st.file_uploader("업로드할 파일:", type="csv")
 
     if uploaded_file is not None:
-        cleanlab_noize_viz.show(uploaded_file)
-        cleanlab_noize_viz.visualization(uploaded_file)
+        save_uploaded_file_to_session(uploaded_file)
+
+    # 데이터 출력
+    if "data" in st.session_state:
+        pass
     else:
-        st.write("파일을 업로드해주세요.")
+        st.warning("세션에 저장된 데이터가 없습니다. 위에서 파일을 업로드해주세요.")
+    select_page()
+
+
+if __name__ == "__main__":
+    main()

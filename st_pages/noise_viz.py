@@ -3,42 +3,19 @@ import re
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
-from data_loader import load_data
 
-
-df = load_data()
 
 low_noise_threshold = 0.05
 norm_noise_threshold = 0.2
 high_noise_threshold = 0.3
 
 
+# 단순 노이즈 비율 계산 : Context 전체 길이 중 특수문자의 비율
 def calculate_noise_ratio(df):
     df["noise_ratio"] = df["text"].apply(
         lambda x: (len(re.findall(r"[^a-zA-Z0-9\sㄱ-ㅎㅏ-ㅣ가-힣]", x)) / len(x) if len(x) > 0 else 0)
     )
     return df
-
-
-# def calculate_noise_ratio(df):
-#     for i in range(len(df)):
-#         noise_chars = re.findall(r"[^a-zA-Z0-9\sㄱ-ㅎㅏ-ㅣ가-힣]", df["text"][i])
-#         noise_ratio = (
-#             len(noise_chars) / len(df["text"][i]) if len(df["text"][i]) > 0 else 0
-#         )
-#         df["noise_ratio"] = df["text"].apply(
-#             lambda x: (
-#                 len(re.findall(r"[^a-zA-Z0-9\sㄱ-ㅎㅏ-ㅣ가-힣]", x)) / len(x)
-#                 if len(x) > 0
-#                 else 0
-#             )
-#         )
-#     low_noise = df[df["noise_ratio"] <= low_noise_threshold].shape[0]
-#     norm_noise = df[
-#         (low_noise_threshold < df["noise_ratio"])
-#         & (df["noise_ratio"] <= norm_noise_threshold)
-#     ].shape[0]
-#     high_noise = df[df["noise_ratio"] > high_noise_threshold].shape[0]
 
 
 def show(df):
@@ -70,16 +47,20 @@ def show(df):
     )
 
     if noise_category == "low_noise":
-        selected_data = df[df["noise_ratio"] <= low_noise_threshold]
+        selected_data = df[df["noise_ratio"] <= low_noise_threshold].sort_values(by="noise_ratio")
+
     elif noise_category == "norm_noise":
-        selected_data = df[(low_noise_threshold < df["noise_ratio"]) & (df["noise_ratio"] <= norm_noise_threshold)]
+        selected_data = df[
+            (low_noise_threshold < df["noise_ratio"]) & (df["noise_ratio"] <= norm_noise_threshold)
+        ].sort_values(by="noise_ratio")
+
     elif noise_category == "high_noise":
-        selected_data = df[df["noise_ratio"] > high_noise_threshold]
+        selected_data = df[df["noise_ratio"] > high_noise_threshold].sort_values(by="noise_ratio")
     else:
-        selected_data = df
+        selected_data = df.sort_values(by="noise_ratio")
 
     if target_value != "None":
-        selected_data = selected_data[selected_data["target"] == target_value]
+        selected_data = selected_data[selected_data["target"] == target_value].sort_values(by="noise_ratio")
 
     st.write(selected_data)
 
