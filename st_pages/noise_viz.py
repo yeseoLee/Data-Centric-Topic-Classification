@@ -47,28 +47,20 @@ def show(df):
     )
 
     if noise_category == "low_noise":
-        selected_data = df[df["noise_ratio"] <= low_noise_threshold].sort_values(
-            by="noise_ratio"
-        )
+        selected_data = df[df["noise_ratio"] <= low_noise_threshold].sort_values(by="noise_ratio")
 
     elif noise_category == "norm_noise":
-
         selected_data = df[
-            (low_noise_threshold < df["noise_ratio"])
-            & (df["noise_ratio"] <= norm_noise_threshold)
+            (low_noise_threshold < df["noise_ratio"]) & (df["noise_ratio"] <= norm_noise_threshold)
         ].sort_values(by="noise_ratio")
 
     elif noise_category == "high_noise":
-        selected_data = df[df["noise_ratio"] > high_noise_threshold].sort_values(
-            by="noise_ratio"
-        )
+        selected_data = df[df["noise_ratio"] > high_noise_threshold].sort_values(by="noise_ratio")
     else:
         selected_data = df.sort_values(by="noise_ratio")
 
     if target_value != "None":
-        selected_data = selected_data[
-            selected_data["target"] == target_value
-        ].sort_values(by="noise_ratio")
+        selected_data = selected_data[selected_data["target"] == target_value].sort_values(by="noise_ratio")
 
     st.write(selected_data)
 
