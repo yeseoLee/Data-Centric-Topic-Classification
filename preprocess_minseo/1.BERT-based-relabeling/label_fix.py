@@ -1,13 +1,17 @@
 # 필요한 라이브러리 임포트
 import pandas as pd
 import torch
-from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
-from transformers import DebertaTokenizer, DebertaForSequenceClassification
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-
-from transformers import DataCollatorWithPadding
-from sklearn.model_selection import train_test_split
 from datasets import Dataset, DatasetDict
+from sklearn.model_selection import train_test_split
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    DataCollatorWithPadding,
+    Trainer,
+    TrainingArguments,
+)
+
+
 # GPU 사용 여부 설정
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -24,20 +28,21 @@ val_data = Dataset.from_pandas(val_data)
 test_data = Dataset.from_pandas(test_df)
 
 # 데이터셋을 DatasetDict 형식으로 변환
-dataset = DatasetDict({
-    "train": train_data,
-    "validation": val_data,
-    "test": test_data
-})
+dataset = DatasetDict({"train": train_data, "validation": val_data, "test": test_data})
 #
 # # 모델과 토크나이저 설정
 # model_name = "team-lucid/deberta-v3-base-korean"
 # tokenizer = BertTokenizer.from_pretrained(model_name)
-# model = BertForSequenceClassification.from_pretrained(model_name, num_labels=len(train_df['target'].unique())).to(device)
+# model = BertForSequenceClassification.from_pretrained(
+#     model_name, num_labels=len(train_df["target"].unique())
+# ).to(device)
 
 model_name = "kakaobank/kf-deberta-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=len(train_df['target'].unique())).to(device)
+model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=len(train_df["target"].unique())).to(
+    device
+)
+
 
 # 데이터 전처리 함수
 # 데이터 전처리 함수 수정
