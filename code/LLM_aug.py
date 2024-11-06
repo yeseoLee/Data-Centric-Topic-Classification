@@ -1,3 +1,4 @@
+import re
 import csv
 import random
 
@@ -17,7 +18,8 @@ model = model.to(device)
 
 def generate_article(title):
     prompt = f"""다음 기사 제목에 대한 내용을 작성해주세요.
-    주제는 똑같지만 기사 내용은 창의적이어도 좋습니다.: {title}
+    주제는 똑같지만 기사 내용은 창의적이어도 좋습니다.
+    : {title}
 
     기사 내용:"""
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
@@ -31,11 +33,14 @@ def generate_article(title):
 
 
 def generate_new_title(article):
-    prompt = f"다음 기사 내용을 바탕으로 새로운 제목을 생성해주세요:\n\n{article}\n\n새로운 제목:"
+    prompt = f"""다음 기사 내용을 바탕으로 새로운 제목을 생성해주세요.
+    기사 내용에 들어간 단어의 동의어로 대체해서 생성하세요.:
+    \n\n{article}\n\n새로운 제목:"""
+
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
     outputs = model.generate(
-        **inputs, max_new_tokens=30, num_return_sequences=1, no_repeat_ngram_size=2, temperature=0.7
+        **inputs, max_new_tokens=20, num_return_sequences=1, no_repeat_ngram_size=2, temperature=0.9
     )
 
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -44,10 +49,15 @@ def generate_new_title(article):
 
 def save_to_csv(data, filename):
     with open(filename, "w", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
+        writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL)
         writer.writerow(["ID", "text", "target"])
         for i, (text, target) in enumerate(data):
-            writer.writerow([f"ynat-v1_train_{i:05d}", text, target])
+            # 불필요한 쌍따옴표와 설명 텍스트 제거
+            cleaned_text = re.sub(r'^"|"$', '', text)
+            cleaned_text = re.sub(r'\s*이\s*제목은.*$', '', cleaned_text)
+            # 줄바꿈 문자를 공백으로 대체하고 앞뒤 공백 제거
+            cleaned_text = ' '.join(cleaned_text.split())
+            writer.writerow([f"ynat-v1_train_{i:05d}", cleaned_text, target])
 
 
 def process_title(title, target):
