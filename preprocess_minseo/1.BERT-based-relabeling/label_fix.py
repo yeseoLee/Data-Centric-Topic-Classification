@@ -12,8 +12,8 @@ from datasets import Dataset, DatasetDict
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 데이터 로드
-train_df = pd.read_csv("../data/df_morph_condition_V1_train.csv")
-test_df = pd.read_csv("../data/df_morph_condition_V1_test.csv")
+train_df = pd.read_csv("../../data/df_morph_condition_V1_train.csv")
+test_df = pd.read_csv("../../data/df_morph_condition_V1_test.csv")
 
 # 학습 데이터셋 준비 (train, validation으로 분할)
 train_data, val_data = train_test_split(train_df, test_size=0.3, random_state=42)
