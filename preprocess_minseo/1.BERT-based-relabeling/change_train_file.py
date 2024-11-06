@@ -1,9 +1,9 @@
 import pandas as pd
 
 # 파일 경로
-test_with_predictions_path = "../data/test_with_predictions.csv"
-train_path = "../data/train.csv"
-output_path = "../data/train_cleaning_AE.csv"
+test_with_predictions_path = "../../data/test_with_predictions.csv"
+train_path = "../../data/train.csv"
+output_path = "../../data/train_cleaning_AE.csv"
 
 # 파일 불러오기
 test_with_predictions = pd.read_csv(test_with_predictions_path)
