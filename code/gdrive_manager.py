@@ -127,3 +127,11 @@ class GoogleDriveManager:
         except Exception as e:
             print(f"Error uploading DataFrame: {str(e)}")
             return None
+
+
+if __name__ == "__main__":
+    drive_manager = GoogleDriveManager()
+    # 파일 목록 조회
+    files = drive_manager.list_folder_files()
+    for file in files:
+        print(f"Name: {file['name']}, ID: {file['id']}")
