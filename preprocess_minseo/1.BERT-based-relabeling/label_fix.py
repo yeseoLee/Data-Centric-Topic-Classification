@@ -5,8 +5,14 @@ import pandas as pd
 import torch
 from datasets import Dataset, DatasetDict
 from sklearn.model_selection import train_test_split
-from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
-                          DataCollatorWithPadding, Trainer, TrainingArguments)
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    DataCollatorWithPadding,
+    Trainer,
+    TrainingArguments,
+)
+
 
 # GPU 사용 여부 설정
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
