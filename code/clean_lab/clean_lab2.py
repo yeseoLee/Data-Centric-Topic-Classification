@@ -26,6 +26,7 @@ from utils import (
 
 
 """
+clean_lab.py와 다른 점은, is_noise==1이면 data_train으로, is_noise==0이면 eval_train으로 split합니다.k-fold를 사용하지 않습니다.
 1. 훈련된 모델: 훈련이 완료된 모델이 지정된 output 경로에 저장됩니다.
 2. retrained_data.csv: 이 파일은 새롭게 라벨링된 훈련 데이터셋으로, 이후 모델 훈련 시 사용할 수 있습니다.
 3. cleaned_data.csv: 각 라벨의 확률이 포함된 데이터셋으로, 모델의 예측 결과를 확인할 수 있습니다.
