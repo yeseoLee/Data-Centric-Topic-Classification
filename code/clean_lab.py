@@ -15,7 +15,15 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import check_dataset, config_print, get_parser, load_env_file, seed_fix, set_debug_mode, wandb_name
+from utils import (
+    check_dataset,
+    config_print,
+    get_parser,
+    load_env_file,
+    seed_fix,
+    set_debug_mode,
+    wandb_name,
+)
 
 
 """
@@ -101,6 +109,7 @@ def train_for_clean_labels(
     )
 
     data = pd.read_csv(train_path)
+    data.loc[:, "text"] = data["text"].astype("str")
     prob_list = []
     skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=SEED)
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
@@ -210,7 +219,7 @@ if __name__ == "__main__":
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    model_name = "klue/bert-base"
+    model_name = "vaiv/kobigbird-roberta-large"  # "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 
