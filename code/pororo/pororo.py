@@ -9,26 +9,25 @@ readme를 먼저 읽고 pororo 라이브러를 설치해야함.
 """
 
 
-def back_translation(text, lang1, lang2):
+def back_translation(text, lang1, lang2, mt):
     trans_text = mt(text, src=lang1, tgt=lang2)
     backtrans_text = mt(trans_text, src=lang2, tgt=lang1)
     return backtrans_text
 
 
+def apply_back_translation(data_path, output_path, lang1="ko", lang2="en"):
+    df = pd.read_csv(data_path)
+
+    mt = Pororo(task="translation", lang="multi")
+
+    tqdm.pandas()
+
+    df["back_translation"] = df["text"].progress_apply(lambda x: back_translation(x, lang1=lang1, lang2=lang2, mt=mt))
+
+    df.to_csv(output_path, index=False, encoding="utf-8-sig")
+
+
 if __name__ == "__main__":
     data_path = "../data/pororo/data.csv"
     output_path = "../data/pororo/data_backtranslated.csv"
-
-    df = pd.read_csv(data_path)
-
-    # Pororo 모델 초기화
-    mt = Pororo(task="translation", lang="multi")
-
-    # tqdm의 progress_apply 사용 준비
-    tqdm.pandas()
-
-    # Back translation 적용
-    df["back_translation"] = df["text"].progress_apply(lambda x: back_translation(x, lang1="ko", lang2="en"))
-
-    # 결과 저장
-    df.to_csv(output_path, index=False, encoding="utf-8-sig")
+    apply_back_translation(data_path, output_path, lang1="ko", lang2="en")
