@@ -26,3 +26,6 @@ config/credentials.json
 config/token.json
 nohup.out
 preprocess/results/
+preprocess_minseo/1.BERT-based-relabeling/results/
+preprocess_minseo/1.BERT-based-relabeling/checkpoint/
+preprocess_minseo/1.BERT-based-relabeling/wandb/
