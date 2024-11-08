@@ -60,7 +60,10 @@ class BERTDataset(Dataset):
 
 def data_setting(test_size, max_length, SEED, train_path, tokenizer):
     data = pd.read_csv(train_path)
-    dataset_train, dataset_valid = train_test_split(data, test_size=test_size, random_state=SEED)
+    data.loc[:, "text"] = data["text"].astype("str")
+    dataset_train, dataset_valid = train_test_split(
+        data, test_size=test_size, stratify=data["target"], random_state=SEED
+    )
 
     data_train = BERTDataset(dataset_train, tokenizer, max_length)
     data_valid = BERTDataset(dataset_valid, tokenizer, max_length)
