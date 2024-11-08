@@ -1,16 +1,22 @@
+"""
+denoise.py 를 실행후 processing.py로 후처리 해주세요
+"""
+
 import csv
 import logging
 import re
 
 import pandas as pd
 import torch
+from prompt import get_prompt_denoise
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-"""
-LLM_denoise.py 를 실행후 processing.py로 후처리 해주세요
-"""
+MODEL_NAME = "LGAI-EXAONE/EXAONE-3.0-7.8B-Instruct"
+PROMPT_VERSION = 1
+
+
 pd.set_option("display.max_rows", None)
 
 # 로깅 설정
@@ -18,7 +24,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # 모델 및 토크나이저 로드
 logging.info("모델 및 토크나이저 로딩 중...")
-model_name = "LGAI-EXAONE/EXAONE-3.0-7.8B-Instruct"
+model_name = MODEL_NAME
 model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -29,14 +35,7 @@ logging.info(f"모델을 {device}로 이동했습니다.")
 
 
 def restore_headline(noisy_headline):
-    prompt = f"""다음은 노이즈가 있는 한국어 뉴스 기사 제목입니다.
-    이를 원래의 정확한 한국어 제목으로 복원해주세요.
-    특수문자는 포함하지 마세요.
-    복원된 제목만 대답하세요.
-
-    노이즈 있는 제목: {noisy_headline}
-    복원된 제목:"""
-
+    prompt = get_prompt_denoise(PROMPT_VERSION, noisy_headline)
     inputs = tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True).to(device)
 
     with torch.no_grad():
@@ -67,7 +66,11 @@ def restore_headline(noisy_headline):
 # CSV 파일 읽기, 데이터 타입 지정
 input_file = "../data/21_relabeling_2800.csv"
 logging.info(f"CSV 파일 '{input_file}' 읽는 중...")
-df = pd.read_csv(input_file, quoting=csv.QUOTE_ALL, dtype={"ID": str, "text": str, "target": int, "is_noise": int})
+df = pd.read_csv(
+    input_file,
+    quoting=csv.QUOTE_ALL,
+    dtype={"ID": str, "text": str, "target": int, "is_noise": int},
+)
 logging.info(f"총 {len(df)} 개의 행을 읽었습니다.")
 
 # is_noise가 1인 항목 필터링
