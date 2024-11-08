@@ -1,12 +1,11 @@
 import logging
 import os
 
-import pandas as pd
-import torch
-import yaml
 from compare_label_changes import compare_target_changes
 from datasets import Dataset, DatasetDict
+import pandas as pd
 from sklearn.model_selection import train_test_split
+import torch
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -14,6 +13,7 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
+import yaml
 
 
 # 로깅 설정
