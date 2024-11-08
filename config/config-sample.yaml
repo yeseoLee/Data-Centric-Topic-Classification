@@ -21,3 +21,4 @@ wandb:
   project: Data Centric
   entity: hidong1015-nlp04
 DEBUG : True
+datashuffle_stratify : True
