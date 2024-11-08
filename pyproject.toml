@@ -30,6 +30,12 @@ select = ["C", "E", "F", "I", "W"]
 [tool.ruff.lint.isort]
 lines-after-imports = 2
 
+# import 섹션 사이에 빈 줄 추가
+lines-between-types = 1
+
+# 섹션 순서 설정
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
 quote-style = "double"
