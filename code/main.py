@@ -58,12 +58,16 @@ class BERTDataset(Dataset):
         return len(self.labels)
 
 
-def data_setting(test_size, max_length, SEED, train_path, tokenizer):
+def data_setting(test_size, max_length, SEED, train_path, tokenizer, is_stratify=True):
     data = pd.read_csv(train_path)
     data.loc[:, "text"] = data["text"].astype("str")
-    dataset_train, dataset_valid = train_test_split(
-        data, test_size=test_size, stratify=data["target"], random_state=SEED
-    )
+    if is_stratify:
+        # target 레이블을 기준으로 stratified split 적용
+        dataset_train, dataset_valid = train_test_split(
+            data, test_size=test_size, random_state=SEED, stratify=data["target"]
+        )
+    else:
+        dataset_train, dataset_valid = train_test_split(data, test_size=test_size, random_state=SEED)
 
     data_train = BERTDataset(dataset_train, tokenizer, max_length)
     data_valid = BERTDataset(dataset_valid, tokenizer, max_length)
@@ -205,7 +209,7 @@ def evaluating(device, model, tokenizer, eval_batch_size, test_path, output_dir)
 
 if __name__ == "__main__":
     parser = get_parser()
-    with open(os.path.join("../config", parser.config)) as f:
+    with open(os.path.join("../config", parser.config), encoding="utf-8") as f:
         CFG = yaml.safe_load(f)
 
     # config의 파라미터를 불러와 변수에 저장함.
@@ -214,6 +218,9 @@ if __name__ == "__main__":
 
     # default는 False, Debug 동작설정
     set_debug_mode(CFG.get("DEBUG", False))
+
+    # 추후 추가한 기능이기 때문에 config에 없음을 고려하여 default값을 부여합니다.
+    is_stratify = CFG.get("datashuffle_stratify", False)
 
     train_file_name = CFG["data"]["train_name"]
     test_file_name = CFG["data"]["test_name"]
@@ -263,7 +270,9 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 
-    data_train, data_valid, data_collator = data_setting(test_size, max_length, SEED, train_path, tokenizer)
+    data_train, data_valid, data_collator = data_setting(
+        test_size, max_length, SEED, train_path, tokenizer, is_stratify
+    )
 
     trained_model = train(
         SEED,
