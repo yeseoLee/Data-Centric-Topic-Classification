@@ -15,7 +15,7 @@ exclude = [
   "env",
   "venv",
   "**/*.ipynb",  # Jupyter Notebook 파일 제외
-  "prompt*.py"
+  "*/prompt/*"
 ]
 
 [tool.ruff.lint]
