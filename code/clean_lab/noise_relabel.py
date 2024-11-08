@@ -1,12 +1,10 @@
 import os
 
+from cleanlab.filter import find_label_issues
+from main import BERTDataset, compute_metrics, data_setting
 import numpy as np
 import pandas as pd
 import torch
-import wandb
-import yaml
-from cleanlab.filter import find_label_issues
-from main import BERTDataset, compute_metrics, data_setting
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -14,7 +12,11 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import (
+import wandb
+import yaml
+
+from ..utils import (
+    HF_TEAM_NAME,
     check_dataset,
     config_print,
     get_parser,
@@ -26,7 +28,7 @@ from utils import (
 
 
 """
-clean_lab.py와 다른 점은, is_noise==1이면 data_train으로, is_noise==0이면 eval_train으로 split합니다.
+clean_lab/class_relabel.py와 다른 점은, is_noise==1이면 data_train으로, is_noise==0이면 eval_train으로 split합니다.
 k-fold를 사용하지 않습니다.
 1. 훈련된 모델: 훈련이 완료된 모델이 지정된 output 경로에 저장됩니다.
 2. retrained_data.csv: 이 파일은 새롭게 라벨링된 훈련 데이터셋으로, 이후 모델 훈련 시 사용할 수 있습니다.
@@ -136,10 +138,16 @@ def train_for_clean_labels_modified(
 
 
 if __name__ == "__main__":
-    # The current process just got forked, after parallelism has already been used.
-    # Disabling parallelism to avoid deadlocks...
-    # os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    # ArgumentParser 설정
+    parser = get_parser()
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default="klue/bert-base",
+        help="사용할 모델 이름",
+    )
 
+    args = parser.parse_args()
     parser = get_parser()
     with open(os.path.join("../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
@@ -176,7 +184,7 @@ if __name__ == "__main__":
     load_env_file("../setup/.env")
     hf_config = CFG.get("huggingface", {})
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
-    hf_organization = "paper-company"
+    hf_organization = HF_TEAM_NAME
 
     config_print(CFG)
 
@@ -191,7 +199,7 @@ if __name__ == "__main__":
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    model_name = "klue/bert-base"
+    model_name = args.model_name
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 

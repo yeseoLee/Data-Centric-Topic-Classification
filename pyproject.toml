@@ -15,7 +15,7 @@ exclude = [
   "env",
   "venv",
   "**/*.ipynb",  # Jupyter Notebook 파일 제외
-  "prompt*.py"
+  "*/prompt/*"
 ]
 
 [tool.ruff.lint]
@@ -29,6 +29,11 @@ select = ["C", "E", "F", "I", "W"]
 
 [tool.ruff.lint.isort]
 lines-after-imports = 2
+
+# 섹션 순서 설정
+section-order = ["standard-library", "third-party", "local-folder"]
+combine-as-imports = true
+force-sort-within-sections = true
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.

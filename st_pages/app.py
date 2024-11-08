@@ -1,9 +1,9 @@
 import cleanlab_noize_viz
+from data_loader import save_uploaded_file_to_session
 import data_overview
 import noise_viz
 import streamlit as st
 import tokenize_viz
-from data_loader import save_uploaded_file_to_session
 
 
 def select_page():

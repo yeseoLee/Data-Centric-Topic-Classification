@@ -2,12 +2,10 @@ import os
 
 import numpy as np
 import pandas as pd
-import torch
-import wandb
-import yaml
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from tabulate import tabulate
+import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import (
@@ -17,7 +15,11 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import (
+import wandb
+import yaml
+
+from .utils import (
+    HF_TEAM_NAME,
     check_dataset,
     config_print,
     get_parser,
@@ -58,12 +60,16 @@ class BERTDataset(Dataset):
         return len(self.labels)
 
 
-def data_setting(test_size, max_length, SEED, train_path, tokenizer):
+def data_setting(test_size, max_length, SEED, train_path, tokenizer, is_stratify=True):
     data = pd.read_csv(train_path)
     data.loc[:, "text"] = data["text"].astype("str")
-    dataset_train, dataset_valid = train_test_split(
-        data, test_size=test_size, stratify=data["target"], random_state=SEED
-    )
+    if is_stratify:
+        # target 레이블을 기준으로 stratified split 적용
+        dataset_train, dataset_valid = train_test_split(
+            data, test_size=test_size, random_state=SEED, stratify=data["target"]
+        )
+    else:
+        dataset_train, dataset_valid = train_test_split(data, test_size=test_size, random_state=SEED)
 
     data_train = BERTDataset(dataset_train, tokenizer, max_length)
     data_valid = BERTDataset(dataset_valid, tokenizer, max_length)
@@ -126,6 +132,7 @@ def train(
     data_collator,
     exp_name,
 ):
+    # 주의: 베이스라인에서 설정한 파라미터 건들지 말 것.
     training_args = TrainingArguments(
         output_dir=output_dir,
         overwrite_output_dir=True,
@@ -135,9 +142,6 @@ def train(
         logging_strategy="epoch",
         evaluation_strategy="epoch",
         save_strategy="epoch",
-        # logging_steps=100,
-        # eval_steps=100,
-        # save_steps=100,
         save_total_limit=2,
         learning_rate=float(learning_rate),
         adam_beta1=0.9,
@@ -205,7 +209,7 @@ def evaluating(device, model, tokenizer, eval_batch_size, test_path, output_dir)
 
 if __name__ == "__main__":
     parser = get_parser()
-    with open(os.path.join("../config", parser.config)) as f:
+    with open(os.path.join("../config", parser.config), encoding="utf-8") as f:
         CFG = yaml.safe_load(f)
 
     # config의 파라미터를 불러와 변수에 저장함.
@@ -214,6 +218,9 @@ if __name__ == "__main__":
 
     # default는 False, Debug 동작설정
     set_debug_mode(CFG.get("DEBUG", False))
+
+    # 추후 추가한 기능이기 때문에 config에 없음을 고려하여 default값을 부여합니다.
+    is_stratify = CFG.get("datashuffle_stratify", False)
 
     train_file_name = CFG["data"]["train_name"]
     test_file_name = CFG["data"]["test_name"]
@@ -244,7 +251,7 @@ if __name__ == "__main__":
     load_env_file("../setup/.env")
     hf_config = CFG.get("huggingface", {})
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
-    hf_organization = "paper-company"
+    hf_organization = HF_TEAM_NAME
 
     config_print(CFG)
 
@@ -259,11 +266,14 @@ if __name__ == "__main__":
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+    # 모델명 절대 수정하지 말 것.
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 
-    data_train, data_valid, data_collator = data_setting(test_size, max_length, SEED, train_path, tokenizer)
+    data_train, data_valid, data_collator = data_setting(
+        test_size, max_length, SEED, train_path, tokenizer, is_stratify
+    )
 
     trained_model = train(
         SEED,

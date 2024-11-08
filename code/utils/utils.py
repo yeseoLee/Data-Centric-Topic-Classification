@@ -4,23 +4,15 @@ import os
 import random
 import time
 
-import numpy as np
-import torch
 from datasets import load_dataset
 from dotenv import load_dotenv
-from gdrive_manager import GoogleDriveManager
+import numpy as np
+import torch
+
+from .gdrive_manager import GoogleDriveManager
 
 
 DEBUG_MODE = False
-
-
-# seed 고정
-def seed_fix(SEED=456):
-    random.seed(SEED)
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    torch.cuda.manual_seed(SEED)
-    torch.cuda.manual_seed_all(SEED)
 
 
 def set_debug_mode(debug_mode):
@@ -115,6 +107,15 @@ def check_dataset(hf_organization, hf_token, train_file_name):
         debug_print("로컬파일을 로드합니다.")
 
 
+# seed 고정
+def seed_fix(SEED=456):
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+
+
 def get_timestamp():
     return round(time.time())
 
@@ -123,31 +124,15 @@ def make_json_report(df):
     json_report = {}
 
     # 가정: 전체 데이터셋의 클래스별 샘플 수는 균등 할 것
-    # public 분포와 가정을 통한 private 분포 추정
-    total_per_class = 30000 // 7
-    public_percentages = [0.1719, 0.1367, 0.1018, 0.1627, 0.1469, 0.1499, 0.1301]
+    num_classes = 7
+    public_percentages = [0.1428] * num_classes
     public_samples = 15000
 
     # Public 데이터셋의 클래스별 샘플 수
     public_distribution = {
         "class_distribution": {str(i): int(p * public_samples) for i, p in enumerate(public_percentages)},
-        "num_classes": 7,
+        "num_classes": num_classes,
         "class_balance": {str(i): round(p, 4) for i, p in enumerate(public_percentages)},
-    }
-
-    # Private 데이터셋의 클래스별 샘플 수
-    private_distribution = {
-        "class_distribution": {
-            str(i): total_per_class - public_distribution["class_distribution"][str(i)] for i in range(7)
-        },
-        "num_classes": 7,
-        "class_balance": {
-            str(i): round(
-                (total_per_class - public_distribution["class_distribution"][str(i)]) / 15000,
-                4,
-            )
-            for i in range(7)
-        },
     }
 
     # 현재 데이터의 타겟 레이블 분포 분석
@@ -160,7 +145,6 @@ def make_json_report(df):
     }
 
     json_report["public_distribution"] = public_distribution
-    json_report["private_distribution"] = private_distribution
 
     # NumPy 타입을 처리하기 위한 커스텀 JSONEncoder
     class NumpyEncoder(json.JSONEncoder):
@@ -187,5 +171,5 @@ def upload_report(dataset_name, user_name, exp_name, result_df, result_json):
     _ = drive_manager.upload_dataframe(result_df, f"{exp_name}_{timestamp}_output.csv", folder_id)
     _ = drive_manager.upload_json_data(result_json, f"{exp_name}_{timestamp}_report.json", folder_id)
 
-    gdrive_url = f"https://drive.google.com/drive/folders/{folder_id}"
+    gdrive_url = os.path.join("https://drive.google.com/drive/folders", folder_id)
     print(f"구글 드라이브에 업로드 되었습니다: {gdrive_url}")
