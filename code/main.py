@@ -126,6 +126,7 @@ def train(
     data_collator,
     exp_name,
 ):
+    # 주의: 베이스라인에서 설정한 파라미터 건들지 말 것.
     training_args = TrainingArguments(
         output_dir=output_dir,
         overwrite_output_dir=True,
@@ -135,9 +136,6 @@ def train(
         logging_strategy="epoch",
         evaluation_strategy="epoch",
         save_strategy="epoch",
-        # logging_steps=100,
-        # eval_steps=100,
-        # save_steps=100,
         save_total_limit=2,
         learning_rate=float(learning_rate),
         adam_beta1=0.9,
