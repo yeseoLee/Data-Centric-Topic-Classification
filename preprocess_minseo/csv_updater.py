@@ -59,6 +59,10 @@ def update_csv_and_save(
 
 
 if __name__ == "__main__":
+    # 로깅 설정
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
     # 파일 경로
     data_dir = os.path.join("..", "data")
     test_with_predictions_path = os.path.join(data_dir, "test_with_predictions.csv")
