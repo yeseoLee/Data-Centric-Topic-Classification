@@ -60,7 +60,7 @@ class BERTDataset(Dataset):
 
 def data_setting(test_size, max_length, SEED, train_path, tokenizer, is_stratify=True):
     data = pd.read_csv(train_path)
-
+    data.loc[:, "text"] = data["text"].astype("str")
     if is_stratify:
         # target 레이블을 기준으로 stratified split 적용
         dataset_train, dataset_valid = train_test_split(
