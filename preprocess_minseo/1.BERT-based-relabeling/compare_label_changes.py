@@ -3,7 +3,6 @@ import os
 
 import pandas as pd
 
-
 # 로거 설정
 logger = logging.getLogger(__name__)
 
