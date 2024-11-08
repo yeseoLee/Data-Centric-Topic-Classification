@@ -4,8 +4,8 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import streamlit as st
 from sklearn.manifold import TSNE
+import streamlit as st
 
 
 # 모든 경고 무시

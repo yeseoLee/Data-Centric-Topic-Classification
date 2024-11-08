@@ -2,12 +2,10 @@ import os
 
 import numpy as np
 import pandas as pd
-import torch
-import wandb
-import yaml
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from tabulate import tabulate
+import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import (
@@ -17,7 +15,11 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import (
+import wandb
+import yaml
+
+from .utils import (
+    HF_TEAM_NAME,
     check_dataset,
     config_print,
     get_parser,
@@ -130,6 +132,7 @@ def train(
     data_collator,
     exp_name,
 ):
+    # 주의: 베이스라인에서 설정한 파라미터 건들지 말 것.
     training_args = TrainingArguments(
         output_dir=output_dir,
         overwrite_output_dir=True,
@@ -139,9 +142,6 @@ def train(
         logging_strategy="epoch",
         evaluation_strategy="epoch",
         save_strategy="epoch",
-        # logging_steps=100,
-        # eval_steps=100,
-        # save_steps=100,
         save_total_limit=2,
         learning_rate=float(learning_rate),
         adam_beta1=0.9,
@@ -251,7 +251,7 @@ if __name__ == "__main__":
     load_env_file("../setup/.env")
     hf_config = CFG.get("huggingface", {})
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
-    hf_organization = "paper-company"
+    hf_organization = HF_TEAM_NAME
 
     config_print(CFG)
 
@@ -266,6 +266,7 @@ if __name__ == "__main__":
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+    # 모델명 절대 수정하지 말 것.
     model_name = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)

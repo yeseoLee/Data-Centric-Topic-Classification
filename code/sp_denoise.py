@@ -13,17 +13,14 @@
 주의: 이 스크립트는 입력 CSV 파일에 'text'와 'is_noise' 열이 있다고 가정합니다.
 """
 
+import argparse
 import os
 
 import pandas as pd
 import sentencepiece as spm
 
 
-# 데이터 파일 경로
-data_file = "/content/2_base_2800_noise_detected.csv"
-
-
-def split_noise_data(data_file):
+def split_noise_data(data_file, noise_data_file="noise_data.csv", non_noise_file="non_noise_data.csv"):
     # CSV 파일 읽기
     df = pd.read_csv(data_file)
 
@@ -32,11 +29,11 @@ def split_noise_data(data_file):
     non_noise_data = df[df["is_noise"] == 0]
 
     # 분리된 데이터를 CSV 파일로 저장
-    noise_data.to_csv("noise_data.csv", index=False)
-    non_noise_data.to_csv("non_noise_data.csv", index=False)
+    noise_data.to_csv(noise_data_file, index=False)
+    non_noise_data.to_csv(non_noise_file, index=False)
 
     print("데이터가 성공적으로 분리되어 CSV 파일로 저장되었습니다.")
-    return "non_noise_data.csv", "noise_data.csv"
+    return noise_data_file, non_noise_file
 
 
 def train_sentencepiece_model(df, model_prefix, vocab_size=19931):
@@ -75,22 +72,44 @@ def process_dataframe(df, sp):
     return df
 
 
-# 메인 실행 코드
 if __name__ == "__main__":
-    # 노이즈 데이터 분리
-    non_noise_file, noise_file = split_noise_data(data_file)
+    # ArgumentParser 설정
+    parser = argparse.ArgumentParser()
 
-    # SentencePiece 모델 훈련을 위한 설정
-    model_prefix = "sentencepiece_model"
+    # 인자 추가
+    parser.add_argument(
+        "--data_file",
+        type=str,
+        default="/content/2_base_2800_noise_detected.csv",
+        help="디노이징할 데이터 파일 경로",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="denoised_data.csv",
+        help="디노이징된 데이터를 저장할 출력 파일 경로",
+    )
+    parser.add_argument(
+        "--model-prefix",
+        type=str,
+        default="sentencepiece_model",
+        help="SentencePiece 모델 prefix",
+    )
+
+    # 인자 파싱
+    args = parser.parse_args()
+
+    # 노이즈 데이터 분리
+    non_noise_file, noise_file = split_noise_data(args.data_file)
 
     # 노이즈가 없는 데이터 읽기
     df = pd.read_csv(non_noise_file)
 
     # SentencePiece 모델 훈련
-    train_sentencepiece_model(df, model_prefix)
+    train_sentencepiece_model(df, args.model_prefix)
 
     # 훈련된 SentencePiece 모델 로드
-    sp = load_sentencepiece_model(f"{model_prefix}.model")
+    sp = load_sentencepiece_model(f"{args.model_prefix}.model")
 
     # 노이즈가 있는 새로운 데이터 읽기
     noise_df = pd.read_csv(noise_file)
@@ -99,6 +118,6 @@ if __name__ == "__main__":
     denoised_df = process_dataframe(noise_df, sp)
 
     # 결과를 CSV 파일로 저장
-    denoised_df.to_csv("denoised_data.csv", index=False)
+    denoised_df.to_csv(args.output, index=False)
 
     print("모든 처리가 완료되었습니다.")

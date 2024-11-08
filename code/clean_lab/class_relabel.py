@@ -1,13 +1,11 @@
 import os
 
-import numpy as np
-import pandas as pd
-import torch
-import wandb
-import yaml
 from cleanlab.filter import find_label_issues
 from main import BERTDataset, compute_metrics, data_setting, evaluating
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import StratifiedKFold
+import torch
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -15,7 +13,11 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import (
+import wandb
+import yaml
+
+from ..utils import (
+    HF_TEAM_NAME,
     check_dataset,
     config_print,
     get_parser,
@@ -87,9 +89,6 @@ def train_for_clean_labels(
         logging_strategy="epoch",
         evaluation_strategy="epoch",
         save_strategy="epoch",
-        # logging_steps=100,
-        # eval_steps=100,
-        # save_steps=100,
         save_total_limit=2,
         learning_rate=float(learning_rate),
         adam_beta1=0.9,
@@ -160,9 +159,16 @@ def train_for_clean_labels(
 
 
 if __name__ == "__main__":
-    # The current process just got forked, after parallelism has already been used.
-    # Disabling parallelism to avoid deadlocks...
-    # os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    # ArgumentParser 설정
+    parser = get_parser()
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default="vaiv/kobigbird-roberta-large",
+        help="사용할 모델 이름",
+    )
+
+    args = parser.parse_args()
 
     parser = get_parser()
     with open(os.path.join("../config", parser.config)) as f:
@@ -204,7 +210,7 @@ if __name__ == "__main__":
     load_env_file("../setup/.env")
     hf_config = CFG.get("huggingface", {})
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
-    hf_organization = "paper-company"
+    hf_organization = HF_TEAM_NAME
 
     config_print(CFG)
 
@@ -219,7 +225,7 @@ if __name__ == "__main__":
 
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    model_name = "vaiv/kobigbird-roberta-large"  # "klue/bert-base"
+    model_name = args.model_name
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=7).to(DEVICE)
 

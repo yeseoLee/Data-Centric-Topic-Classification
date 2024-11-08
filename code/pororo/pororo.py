@@ -1,12 +1,11 @@
-import pandas as pd
-from pororo import Pororo
-from tqdm import tqdm
-
-
 """
 Pororo 라이브러리를 사용하여 문장을 다른 언어로 번역 후 다시 원래 언어로 번역하는 Back Translation(역번역) 작업을 수행
 readme를 먼저 읽고 pororo 라이브러를 설치해야함.
 """
+
+import pandas as pd
+from pororo import Pororo
+from tqdm import tqdm
 
 
 def back_translation(text, lang1, lang2, mt):
@@ -15,10 +14,17 @@ def back_translation(text, lang1, lang2, mt):
     return backtrans_text
 
 
-def apply_back_translation(data_path, output_path, lang1="ko", lang2="en"):
+def apply_back_translation(
+    data_path="../data/pororo/data.csv",
+    output_path="../data/pororo/data_backtranslated.csv",
+    proro_task="translation",
+    proro_lang="multi",
+    lang1="ko",
+    lang2="en",
+):
     df = pd.read_csv(data_path)
 
-    mt = Pororo(task="translation", lang="multi")
+    mt = Pororo(task=proro_task, lang=proro_lang)
 
     tqdm.pandas()
 
@@ -28,6 +34,4 @@ def apply_back_translation(data_path, output_path, lang1="ko", lang2="en"):
 
 
 if __name__ == "__main__":
-    data_path = "../data/pororo/data.csv"
-    output_path = "../data/pororo/data_backtranslated.csv"
-    apply_back_translation(data_path, output_path, lang1="ko", lang2="en")
+    apply_back_translation()

@@ -1,10 +1,10 @@
 # 필요한 라이브러리 임포트
 import os
 
-import pandas as pd
-import torch
 from datasets import Dataset, DatasetDict
+import pandas as pd
 from sklearn.model_selection import train_test_split
+import torch
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
