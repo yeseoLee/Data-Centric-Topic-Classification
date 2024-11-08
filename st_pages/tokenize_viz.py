@@ -2,7 +2,7 @@ import streamlit as st
 from transformers import AutoTokenizer
 
 
-tokenizer = AutoTokenizer.from_pretrained("klue/roberta-base")
+tokenizer = AutoTokenizer.from_pretrained("klue/bert-base")
 
 
 def show(df):

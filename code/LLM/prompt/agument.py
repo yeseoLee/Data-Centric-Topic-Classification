@@ -13,6 +13,33 @@ def get_prompt_synonyms(word, version=1):
         return prompt_synonyms_v1(word)
 
 
+def get_prompt_title_to_article(text, version=1):
+    if version == 1:
+        return prompt_title_to_article_v1(text)
+
+
+def get_prompt_article_to_title(article, version=1):
+    if version == 1:
+        return prompt_article_to_title_v1(article)
+
+
+def prompt_article_to_title_v1(article):
+    prompt_article_to_title = f"""다음 기사 내용을 바탕으로 새로운 제목을 생성해주세요.
+    절대 기사 내용에 들어간 단어는 쓰지 마세요.:
+    \n\n{article}\n\n새로운 제목:"""
+    return prompt_article_to_title
+
+
+def prompt_title_to_article_v1(text):
+    prompt = f"""다음 기사 제목에 대한 내용을 작성해주세요.
+    주제는 똑같지만 기사 내용은 창의적이어도 좋습니다.
+    : {text}
+
+    기사 내용:"""
+    end_word = "기사 내용:"
+    return prompt, end_word
+
+
 def prompt_synonyms_v1(word):
     prompt = f"다음 단어의 동의어를 쉼표로 구분하여 5개만 나열해주세요: {word}"
     return prompt

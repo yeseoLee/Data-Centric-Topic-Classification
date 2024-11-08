@@ -1,9 +1,14 @@
 import os
 
-import yaml
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from main import get_parser, load_env_file
+import yaml
+
+
+# 절대 바꾸지 않을 값이므로 따로 config 처리X
+HF_TEAM_NAME = "paper-company"
+HF_PROJECT_NAME = "datacentric"
 
 
 def upload_train_file_to_hub(file_name, token, private=True):
@@ -19,7 +24,7 @@ def upload_train_file_to_hub(file_name, token, private=True):
     - None
     """
     api = HfApi()
-    repo_id = f"paper-company/datacentric-{file_name}"
+    repo_id = f"{HF_TEAM_NAME}/{HF_PROJECT_NAME}-{file_name}"
 
     # 리포지토리 존재 여부 확인
     try:
@@ -44,11 +49,11 @@ def upload_train_file_to_hub(file_name, token, private=True):
 
 if "__main__" == __name__:
     parser = get_parser()
-    with open(os.path.join("../config", parser.config)) as f:
+    with open(os.path.join("../../config", parser.config)) as f:
         CFG = yaml.safe_load(f)
 
     # 허깅페이스 API키 관리
-    load_env_file("../setup/.env")
+    load_env_file("../../setup/.env")
     hf_token = os.getenv("HUGGINGFACE_TOKEN")
 
     # 업로드할 파일명 지정

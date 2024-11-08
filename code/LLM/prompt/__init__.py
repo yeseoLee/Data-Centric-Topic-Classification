@@ -18,6 +18,12 @@ Examples:
 >>> prompt = get_agument_prompt(1, "original text")
 """
 
-from .agument import get_agument_system_message, get_prompt_agument, get_prompt_synonyms
+from .agument import (
+    get_agument_system_message,
+    get_prompt_agument,
+    get_prompt_synonyms,
+    get_prompt_title_to_article,
+    get_prompt_article_to_title,
+)
 from .denoise import get_prompt_denoise, get_system_message_denoise
 from .relabel import get_prompt_relabel, get_system_messaget_relabel
