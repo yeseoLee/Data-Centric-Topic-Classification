@@ -6,16 +6,31 @@ import time
 
 import pandas as pd
 import torch
+import yaml
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 # 로깅 설정
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
+
+# YAML 설정 파일 로드 함수
+def load_config(config_path="config.yaml"):
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
+
+
+# 설정 불러오기
+config = load_config()
+
 # 모델 및 토크나이저 설정
-model_name = "LGAI-EXAONE/EXAONE-3.0-7.8B-Instruct"
+model_name = config["model"]["name"]
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
 
@@ -24,20 +39,20 @@ model = model.to(device)
 logger.info(f"모델과 토크나이저 로드 완료 - 디바이스: {device}")
 
 # 데이터 로드 및 라벨별 데이터프레임 분할
-few_shot_df = pd.read_csv("../../data/5_base_noise_detected_test_with_predictions.csv")  # few-shot 예제 데이터
-need_denoise_df = pd.read_csv("../../data/5_base_noise_detected_train.csv")  # 노이즈 제거 대상 데이터
+few_shot_df = pd.read_csv(config["paths"]["few_shot_data"])  # few-shot 예제 데이터
+need_denoise_df = pd.read_csv(config["paths"]["denoise_data"])  # 노이즈 제거 대상 데이터
 need_denoise_df["denoised_text"] = ""
 
-# few-shot데이터를 라벨별로 분류
+# few-shot 데이터를 라벨별로 분류
 label_dfs = {label: few_shot_df[few_shot_df["target"] == label] for label in few_shot_df["target"].unique()}
 
 
 # 노이즈 추가 함수
-def add_extended_ascii_noise(text, noise_level=0.5):
+def add_extended_ascii_noise(text, noise_level=0.5, ascii_ratio=0.93):
     noisy_text = ""
     for char in text:
         if random.random() < noise_level:
-            if random.random() < 0.93:
+            if random.random() < ascii_ratio:
                 noisy_text += chr(random.randint(33, 126))  # ASCII 범위 내 특수 문자, 대소문자, 숫자
             else:
                 noisy_text += chr(random.randint(0x4E00, 0x9FFF))  # 한자 유니코드 범위
@@ -52,7 +67,9 @@ def generate_few_shot_examples(label_dfs, target_label):
     sample_list = "예시: \n"
     for _, example_row in few_shot_examples.iterrows():
         original_example = example_row["text"]
-        noisy_example = add_extended_ascii_noise(original_example)
+        noisy_example = add_extended_ascii_noise(
+            original_example, noise_level=config["noise"]["level"], ascii_ratio=config["noise"]["ascii_ratio"]
+        )
         sample_list += f"입력된 제목: {noisy_example}\n복원된 제목: {original_example}\n\n"
     return sample_list
 
@@ -74,15 +91,17 @@ def denoise_text_with_few_shot(row, label_dfs):
     입력된 제목: {noisy_text}
     복원된 제목:"""
 
-    inputs = tokenizer.encode(prompt, return_tensors="pt", max_length=512, truncation=True).to(device)
+    inputs = tokenizer.encode(
+        prompt, return_tensors="pt", max_length=config["model"]["max_length"], truncation=True
+    ).to(device)
     outputs = model.generate(
         inputs,
-        max_new_tokens=20,
-        num_return_sequences=1,
-        no_repeat_ngram_size=2,
-        top_k=50,
-        top_p=0.9,
-        temperature=0.7,
+        max_new_tokens=config["model"]["max_new_tokens"],
+        num_return_sequences=config["model"]["num_return_sequences"],
+        no_repeat_ngram_size=config["model"]["no_repeat_ngram_size"],
+        top_k=config["model"]["top_k"],
+        top_p=config["model"]["top_p"],
+        temperature=config["model"]["temperature"],
         do_sample=True,
     )
     restored_headline = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -95,13 +114,12 @@ def denoise_text_with_few_shot(row, label_dfs):
         restored_headline = restored_headline.splitlines()[0]
     except IndexError:
         restored_headline = ""
-    #
-    # logger.info(f"원본 텍스트: {noisy_text} -> 복원된 텍스트: {restored_headline}")
+
     return restored_headline.strip()
 
 
 # 진행 상황 저장 및 불러오기
-save_path = "denoised_results.csv"
+save_path = config["paths"]["save_path"]
 if os.path.exists(save_path):
     need_denoise_df = pd.read_csv(save_path)
     last_processed_index = need_denoise_df["denoised_text"].last_valid_index() or -1
@@ -127,8 +145,8 @@ for index, row in tqdm(need_denoise_df.iterrows(), total=total_rows, desc="노�
     elapsed_time = time.time() - start_time
     logger.info(f"{index + 1}/{total_rows} 행 처리 완료 - 소요 시간: {elapsed_time:.2f}초")
 
-    # 100행마다 중간 진행 저장
-    if (index + 1) % 100 == 0:
+    # 중간 진행 저장
+    if (index + 1) % config["save_frequency"] == 0:
         need_denoise_df.to_csv(save_path, index=False)
         logger.info(f"{index + 1}번째 행에서 중간 저장 완료")
 
