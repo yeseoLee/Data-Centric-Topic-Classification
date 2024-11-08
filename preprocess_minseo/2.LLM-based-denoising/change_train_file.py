@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 # 파일 경로
 model_result = "../denoised_results_relabel.csv"
 train_path = "../../data/train_cleaning_label_5sj.csv"

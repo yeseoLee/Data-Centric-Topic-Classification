@@ -9,12 +9,9 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+
 # 로깅 설정
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
 # 모델 및 토크나이저 설정
@@ -29,10 +26,11 @@ logger.info(f"모델과 토크나이저 로드 완료 - 디바이스: {device}")
 # 데이터 로드 및 라벨별 데이터프레임 분할
 few_shot_df = pd.read_csv("../../data/5_base_noise_detected_test_with_predictions.csv")  # few-shot 예제 데이터
 need_denoise_df = pd.read_csv("../../data/5_base_noise_detected_train.csv")  # 노이즈 제거 대상 데이터
-need_denoise_df['denoised_text'] = ""
+need_denoise_df["denoised_text"] = ""
 
 # few-shot데이터를 라벨별로 분류
-label_dfs = {label: few_shot_df[few_shot_df['target'] == label] for label in few_shot_df['target'].unique()}
+label_dfs = {label: few_shot_df[few_shot_df["target"] == label] for label in few_shot_df["target"].unique()}
+
 
 # 노이즈 추가 함수
 def add_extended_ascii_noise(text, noise_level=0.5):
@@ -47,20 +45,22 @@ def add_extended_ascii_noise(text, noise_level=0.5):
             noisy_text += char
     return noisy_text
 
+
 # 예시 생성 함수
 def generate_few_shot_examples(label_dfs, target_label):
     few_shot_examples = label_dfs[target_label].sample(3)
     sample_list = "예시: \n"
     for _, example_row in few_shot_examples.iterrows():
-        original_example = example_row['text']
+        original_example = example_row["text"]
         noisy_example = add_extended_ascii_noise(original_example)
         sample_list += f"입력된 제목: {noisy_example}\n복원된 제목: {original_example}\n\n"
     return sample_list
 
+
 # 노이즈 제거 함수
 def denoise_text_with_few_shot(row, label_dfs):
-    target_label = row['target']
-    noisy_text = row['text']
+    target_label = row["target"]
+    noisy_text = row["text"]
 
     sample_list = generate_few_shot_examples(label_dfs, target_label)
 
@@ -83,7 +83,7 @@ def denoise_text_with_few_shot(row, label_dfs):
         top_k=50,
         top_p=0.9,
         temperature=0.7,
-        do_sample=True
+        do_sample=True,
     )
     restored_headline = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
@@ -99,11 +99,12 @@ def denoise_text_with_few_shot(row, label_dfs):
     # logger.info(f"원본 텍스트: {noisy_text} -> 복원된 텍스트: {restored_headline}")
     return restored_headline.strip()
 
+
 # 진행 상황 저장 및 불러오기
 save_path = "denoised_results.csv"
 if os.path.exists(save_path):
     need_denoise_df = pd.read_csv(save_path)
-    last_processed_index = need_denoise_df['denoised_text'].last_valid_index() or -1
+    last_processed_index = need_denoise_df["denoised_text"].last_valid_index() or -1
 else:
     last_processed_index = -1
 
@@ -122,7 +123,7 @@ for index, row in tqdm(need_denoise_df.iterrows(), total=total_rows, desc="노�
         logger.error(f"{index}번째 행 처리 중 오류 발생: {e}")
         denoised_text = ""
 
-    need_denoise_df.at[index, 'denoised_text'] = denoised_text
+    need_denoise_df.at[index, "denoised_text"] = denoised_text
     elapsed_time = time.time() - start_time
     logger.info(f"{index + 1}/{total_rows} 행 처리 완료 - 소요 시간: {elapsed_time:.2f}초")
 
