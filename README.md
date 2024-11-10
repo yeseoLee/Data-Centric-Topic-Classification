@@ -1,6 +1,6 @@
 ![alt text](./assets/banner.png)
 
-# Lv.2 NLP 기초 프로젝트 : Topic Classfication
+# Lv.2 NLP 프로젝트 : Topic Classfication
 
 </div>
 
@@ -65,12 +65,12 @@
 
 | 이름 | 역할 |
 | --- | --- |
-| 김민서 |  |
-| 김수진 | 특수문자 |
-| 양가연 | streamlit 개발 |
-| 이예서 | 포맷팅 세팅, 구글드라이브 데이터 백업 세팅,  |
-| 홍성민 | 베이스라인 리팩토링, LLM Relabeling, LLM denoising |
-| 홍성재 | streamlit 개발, LLM Denoising |
+| 김민서 | 허깅페이스 세팅, EDA(ASCII Code 기반 분석), Data Cleaning(LLM prompting), Data Relabeling(BERT), 데이터증강(sentence mix) |
+| 김수진 | EDA(특수문자 비율 기반 분석), Data Cleaning(특수문자 제거, LLM prompting), Data Relabeling(Cleanlab), 데이터증강(Back Translation) |
+| 양가연 | streamlit 개발, Data Cleaning(Tokenizer, 형태소 분석기, LLM prompting), Data Relabeling(Cleanlab) |
+| 이예서 | Github 세팅, 구글드라이브 데이터 백업 세팅, EDA(데이터 패턴분석), Data Cleaning(BART, LLM prompting), 데이터증강(LLM) |
+| 홍성민 | 베이스라인 리팩토링, Data Cleaning(LLM prompting), Data Relabeling(LLM), 데이터증강(LLM) |
+| 홍성재 | streamlit 개발, 데이터 시각화, EDA, Data Cleaning(LLM prompting) |
 
 
 ## **데이터구조**
