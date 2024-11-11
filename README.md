@@ -147,7 +147,7 @@ level2-nlp-datacentric-nlp-04
 ```
 
 
-## 🛠️**Requirements**
+## 🛠️**Dependencies**
 ```
 # CUDA Version: 12.2 
 
@@ -189,6 +189,16 @@ pytest==8.3.2
 google-api-python-client==2.151.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.1
+```
+
+## Usage
+1. Setting
+```
+$ pip install -r requirements.txt
+```
+2. train & evaluate
+```angular2html
+$ python3 code/main.py
 ```
 
 
