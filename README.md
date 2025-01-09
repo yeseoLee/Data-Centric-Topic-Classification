@@ -5,17 +5,18 @@
 </div>
 
 ## **개요**
+
 > 진행 기간: 24년 9월 10일 ~ 24년 9월 26일
 
-> 데이터셋: 
+> 데이터셋:
+>
 > - 학습 데이터셋 2,800개
-> - 평가 데이터는 30,000개  
+> - 평가 데이터는 30,000개
 >
 > 평가 데이터의 50%는 Public 점수 계산에 활용되어 실시간 리더보드에 표기가 되고, 남은 50%는 Private 결과 계산에 활용되었습니다.
 
 본 프로젝트는 KLUE-topic Classfication benchmark 데이터를 사용하며, 뉴스의 헤드라인을 통해 그 뉴스가 어떤 topic을 갖는지 분류해내는 Task입니다.
 랜덤으로 Noise가 추가된 1600개 데이터와 라벨링 오류가 추가된 1000개가 있으며, Data-Centric 관점에서 적절한 방법을 통해 성능 향상을 이끌어내는 것이 목적입니다.
-
 
 ## **Contributors**
 
@@ -25,13 +26,13 @@
       <img src="https://github.com/yeseoLee.png" alt="이예서" width="100" height="100" style="border-radius: 50%;"/><br>
       <a href="https://github.com/yeseoLee">
         <img src="https://img.shields.io/badge/%EC%9D%B4%EC%98%88%EC%84%9C-grey?style=for-the-badge&logo=github" alt="badge 이예서"/>
-      </a>    
+      </a>  
     </td>
     <td align="center">
       <img src="https://github.com/Sujinkim-625.png" alt="김수진" width="100" height="100" style="border-radius: 50%;"/><br>
       <a href="https://github.com/Sujinkim-625">
         <img src="https://img.shields.io/badge/%EA%B9%80%EC%88%98%EC%A7%84-grey?style=for-the-badge&logo=github" alt="badge 김수진"/>
-      </a>    
+      </a>  
     </td>
     <td align="center">
       <img src="https://github.com/luckyvickyricky.png" alt="김민서" width="100" height="100" style="border-radius: 50%;"/><br>
@@ -60,20 +61,19 @@
   </tr>
 </table>
 
-
 ## 역할
 
-| 이름 | 역할 |
-| --- | --- |
-| 김민서 | 허깅페이스 세팅, EDA(ASCII Code 기반 분석), Data Cleaning(LLM prompting), Data Relabeling(BERT), 데이터증강(sentence mix) |
+| 이름   | 역할                                                                                                                               |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 김민서 | 허깅페이스 세팅, EDA(ASCII Code 기반 분석), Data Cleaning(LLM prompting), Data Relabeling(BERT), 데이터증강(sentence mix)          |
 | 김수진 | EDA(특수문자 비율 기반 분석), Data Cleaning(특수문자 제거, LLM prompting), Data Relabeling(Cleanlab), 데이터증강(Back Translation) |
-| 양가연 | streamlit 개발, Data Cleaning(Tokenizer, 형태소 분석기, LLM prompting), Data Relabeling(Cleanlab) |
-| 이예서 | Github 세팅, 구글드라이브 데이터 백업 세팅, EDA(데이터 패턴분석), Data Cleaning(BART, LLM prompting), 데이터증강(LLM) |
-| 홍성민 | 베이스라인 리팩토링, Data Cleaning(LLM prompting), Data Relabeling(LLM), 데이터증강(LLM) |
-| 홍성재 | streamlit 개발, 데이터 시각화, EDA, Data Cleaning(LLM prompting) |
-
+| 양가연 | streamlit 개발, Data Cleaning(Tokenizer, 형태소 분석기, LLM prompting), Data Relabeling(Cleanlab)                                  |
+| 이예서 | EDA(데이터 패턴분석), Data Cleaning(BART, LLM prompting), 데이터증강(LLM), 구글드라이브 데이터 백업 세팅, 프로젝트 템플릿 세팅    |
+| 홍성민 | 베이스라인 리팩토링, Data Cleaning(LLM prompting), Data Relabeling(LLM), 데이터증강(LLM)                                           |
+| 홍성재 | streamlit 개발, 데이터 시각화, EDA, Data Cleaning(LLM prompting)                                                                   |
 
 ## **데이터구조**
+
 ```bash
 level2-nlp-datacentric-nlp-04
 ├── code
@@ -146,8 +146,8 @@ level2-nlp-datacentric-nlp-04
 └── README.md
 ```
 
-
 ## 🛠️**Dependencies**
+
 ```
 # CUDA Version: 12.2 
 
@@ -192,17 +192,21 @@ google-auth-oauthlib==1.2.1
 ```
 
 ## Usage
+
 1. Setting
+
 ```
 $ pip install -r requirements.txt
 ```
+
 2. train & evaluate
+
 ```angular2html
 $ python3 code/main.py
 ```
 
-
 ## 최종 결과
+
 - public: 7위, private: 7위
 
 <img width="1216" alt="image" src="./assets/public_rank.png">
