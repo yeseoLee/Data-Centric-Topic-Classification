@@ -1,6 +1,4 @@
-![alt text](./assets/banner.png)
-
-# Lv.2 NLP 프로젝트 : Topic Classfication
+# NLP 프로젝트 : Topic Classfication
 
 </div>
 
@@ -207,7 +205,7 @@ $ python3 code/main.py
 
 ## 최종 결과
 
-- public: 7위, private: 7위
+- 총 16팀 중 public: 7위, private: 7위
 
 <img width="1216" alt="image" src="./assets/public_rank.png">
 <img width="1216" alt="image" src="./assets/private_rank.png">
